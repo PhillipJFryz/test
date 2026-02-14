@@ -1,0 +1,219 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-primary: #0f1419;
+  --bg-secondary: #1a2332;
+  --bg-card: #1e2a3a;
+  --text-primary: #e7e9ea;
+  --text-secondary: #8b98a5;
+  --accent: #1d9bf0;
+  --accent-hover: #1a8cd8;
+  --positive: #00c087;
+  --negative: #f6465d;
+  --border: #2f3336;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+.header {
+  background: var(--bg-secondary);
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-left: 0.5rem;
+}
+
+.main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.exchange-selector {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.selector-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  max-width: 280px;
+}
+
+.selector-group label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.select {
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.select:hover {
+  border-color: var(--accent);
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.coin-list-section {
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.list-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.notice {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.coin-list-container {
+  overflow-x: auto;
+}
+
+.coin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.coin-table th,
+.coin-table td {
+  padding: 1rem 1.5rem;
+  text-align: left;
+}
+
+.coin-table th {
+  background: var(--bg-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.coin-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.coin-table tbody tr:hover {
+  background: rgba(29, 155, 240, 0.05);
+}
+
+.coin-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.coin-table .empty-state td {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-secondary);
+}
+
+.coin-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.coin-symbol {
+  font-weight: 600;
+}
+
+.coin-full-name {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.premium-positive {
+  color: var(--positive);
+  font-weight: 600;
+}
+
+.premium-negative {
+  color: var(--negative);
+  font-weight: 600;
+}
+
+@keyframes cell-flash {
+  0% { background: rgba(29, 155, 240, 0.3); }
+  100% { background: transparent; }
+}
+
+.cell-change-rate.cell-flash,
+.cell-upbit.cell-flash,
+.cell-gate.cell-flash,
+.cell-krw-diff.cell-flash,
+.cell-trade-volume.cell-flash,
+.cell-premium.cell-flash {
+  animation: cell-flash 0.6s ease-out;
+}
+
+.footer {
+  margin-top: 3rem;
+  padding: 1.5rem 2rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 768px) {
+  .exchange-selector {
+    flex-direction: column;
+  }
+
+  .selector-group {
+    max-width: none;
+  }
+
+  .main {
+    padding: 1rem;
+  }
+
+  .coin-table th,
+  .coin-table td {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+}
