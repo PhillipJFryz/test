@@ -1,5 +1,7 @@
 // 1 USDT = 1460 KRW (API 실패 시 폴백, 정상 시 업비트 KRW-USDT 실시간 시세 사용)
 const USDT_KRW_RATE_FALLBACK = 1460;
+// 우측상단 환율 고정 기준값 (비율 계산용)
+const HEADER_RATE_FIXED = 1445;
 
 // 거래소 정보
 const exchanges = {
@@ -196,6 +198,19 @@ function updateCoinPrices(coins, usdtKrwRate) {
   });
 }
 
+function updateHeaderRate(usdtKrwRate) {
+  const el = document.getElementById('headerRate');
+  if (!el) return;
+  if (usdtKrwRate == null) {
+    el.innerHTML = '환율 : 1,445원(<span class="header-rate-percent">-</span>)';
+    return;
+  }
+  const diff = usdtKrwRate - HEADER_RATE_FIXED;
+  const percentDiff = (diff / HEADER_RATE_FIXED) * 100;
+  const sign = percentDiff >= 0 ? '+' : '';
+  el.innerHTML = `환율 : 1,445원(<span class="header-rate-percent">${sign}${percentDiff.toFixed(2)}%</span>)`;
+}
+
 function updateTableHeaders(baseExchange, overseasExchange) {
   const ths = document.querySelectorAll('.coin-table th');
   if (ths.length >= 3) {
@@ -229,6 +244,7 @@ async function onExchangeChange() {
   const coins = data?.coins || [];
   const usdtKrwRate = data?.krwRate; // 1 USDT = N KRW (업비트 KRW-USDT)
   renderCoinList(coins, baseExchange.name, overseasExchange.name, false, usdtKrwRate);
+  updateHeaderRate(usdtKrwRate);
 }
 
 const REFRESH_INTERVAL = 3000;
@@ -253,5 +269,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const coins = data?.coins || [];
     const usdtKrwRate = data?.krwRate; // 1 USDT = N KRW (업비트 KRW-USDT)
     updateCoinPrices(coins, usdtKrwRate);
+    updateHeaderRate(usdtKrwRate);
   }, REFRESH_INTERVAL);
 });

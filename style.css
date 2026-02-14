@@ -26,9 +26,21 @@ body {
 }
 
 .header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   background: var(--bg-secondary);
   padding: 1rem 2rem;
   border-bottom: 1px solid var(--border);
+}
+
+.header-rate {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.header-rate-percent {
+  color: var(--negative);
 }
 
 .logo h1 {
