@@ -34,6 +34,24 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+.header-rate-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-rate-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.header-date {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
 .header-rate {
   font-size: 0.9rem;
   color: var(--text-secondary);
@@ -41,6 +59,118 @@ body {
 
 .header-rate-percent {
   color: var(--negative);
+}
+
+.header-rate-edit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+
+.header-rate-edit:hover {
+  color: var(--accent);
+  background: rgba(29, 155, 240, 0.1);
+}
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-overlay.is-open {
+  display: flex;
+}
+
+.modal-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  min-width: 320px;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.modal-desc {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.25rem;
+}
+
+.modal-form label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  margin-bottom: 1.25rem;
+}
+
+.modal-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.modal-btn {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.modal-btn-cancel {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.modal-btn-cancel:hover {
+  background: var(--bg-secondary);
+}
+
+.modal-btn-save {
+  background: var(--accent);
+  border: none;
+  color: #fff;
+}
+
+.modal-btn-save:hover {
+  background: var(--accent-hover);
 }
 
 .logo h1 {

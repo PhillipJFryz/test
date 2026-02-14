@@ -1,7 +1,9 @@
 // 1 USDT = 1460 KRW (API 실패 시 폴백, 정상 시 업비트 KRW-USDT 실시간 시세 사용)
 const USDT_KRW_RATE_FALLBACK = 1460;
-// 우측상단 환율 고정 기준값 (비율 계산용)
-const HEADER_RATE_FIXED = 1445;
+// 우측상단 환율 고정 기준값 (config에서 로드, 기본 1445)
+let headerRateFixed = 1445;
+// 환율 기준 날짜 (config에서 로드)
+let headerRateDate = null;
 
 // 거래소 정보
 const exchanges = {
@@ -18,6 +20,14 @@ function formatKRWOnly(value) {
     style: 'decimal',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
+  }).format(value);
+}
+
+function formatKRW2Decimals(value) {
+  return new Intl.NumberFormat('ko-KR', {
+    style: 'decimal',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   }).format(value);
 }
 
@@ -56,6 +66,46 @@ async function fetchPrices() {
     console.error(err);
     return null;
   }
+}
+
+async function fetchConfig() {
+  try {
+    const res = await fetch('/api/config');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.headerRateFixed != null) {
+      headerRateFixed = Math.round(parseFloat(data.headerRateFixed) * 100) / 100;
+    }
+    headerRateDate = data.rateDate || null;
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function saveConfig(rate, rateDate) {
+  try {
+    const body = { headerRateFixed: rate };
+    if (rateDate) body.rateDate = rateDate;
+    const res = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error('저장 실패');
+    const data = await res.json();
+    headerRateFixed = Math.round(parseFloat(data.headerRateFixed) * 100) / 100;
+    headerRateDate = data.rateDate || null;
+    return true;
+  } catch (err) {
+    console.error(err);
+    return false;
+  }
+}
+
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  return `${y}.${m}.${d}`;
 }
 
 function renderCoinList(coins, baseName, overseasName, isLoading, usdtKrwRate) {
@@ -200,15 +250,18 @@ function updateCoinPrices(coins, usdtKrwRate) {
 
 function updateHeaderRate(usdtKrwRate) {
   const el = document.getElementById('headerRate');
+  const dateEl = document.getElementById('headerDate');
   if (!el) return;
+  const fixedStr = formatKRW2Decimals(headerRateFixed);
   if (usdtKrwRate == null) {
-    el.innerHTML = '환율 : 1,445원(<span class="header-rate-percent">-</span>)';
-    return;
+    el.innerHTML = `환율 : ${fixedStr}원(<span class="header-rate-percent">-</span>)`;
+  } else {
+    const diff = usdtKrwRate - headerRateFixed;
+    const percentDiff = (diff / headerRateFixed) * 100;
+    const sign = percentDiff >= 0 ? '+' : '';
+    el.innerHTML = `환율 : ${fixedStr}원(<span class="header-rate-percent">${sign}${percentDiff.toFixed(2)}%</span>)`;
   }
-  const diff = usdtKrwRate - HEADER_RATE_FIXED;
-  const percentDiff = (diff / HEADER_RATE_FIXED) * 100;
-  const sign = percentDiff >= 0 ? '+' : '';
-  el.innerHTML = `환율 : 1,445원(<span class="header-rate-percent">${sign}${percentDiff.toFixed(2)}%</span>)`;
+  if (dateEl) dateEl.textContent = formatDisplayDate(headerRateDate);
 }
 
 function updateTableHeaders(baseExchange, overseasExchange) {
@@ -249,9 +302,51 @@ async function onExchangeChange() {
 
 const REFRESH_INTERVAL = 3000;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const baseSelect = document.getElementById('baseExchange');
   const overseasSelect = document.getElementById('overseasExchange');
+  const rateEditBtn = document.getElementById('headerRateEdit');
+  const rateModal = document.getElementById('rateModal');
+  const rateInput = document.getElementById('rateInput');
+  const dateInput = document.getElementById('dateInput');
+  const rateModalCancel = document.getElementById('rateModalCancel');
+  const rateModalSave = document.getElementById('rateModalSave');
+
+  await fetchConfig();
+
+  rateEditBtn.addEventListener('click', () => {
+    rateInput.value = Number(headerRateFixed).toFixed(2);
+    dateInput.value = headerRateDate || new Date().toISOString().slice(0, 10);
+    rateModal.classList.add('is-open');
+    rateInput.focus();
+  });
+
+  rateModalCancel.addEventListener('click', () => {
+    rateModal.classList.remove('is-open');
+  });
+
+  rateModal.addEventListener('click', (e) => {
+    if (e.target === rateModal) rateModal.classList.remove('is-open');
+  });
+
+  rateModalSave.addEventListener('click', async () => {
+    const val = parseFloat(rateInput.value);
+    if (isNaN(val) || val < 1 || val > 999999) {
+      alert('1 ~ 999,999 사이의 숫자를 입력하세요.');
+      return;
+    }
+    const valRounded = Math.round(val * 100) / 100;
+    const dateVal = dateInput.value || null;
+    const ok = await saveConfig(valRounded, dateVal);
+    if (ok) {
+      rateModal.classList.remove('is-open');
+      updateHeaderRate(null);
+      const data = await fetchPrices();
+      if (data?.krwRate != null) updateHeaderRate(data.krwRate);
+    } else {
+      alert('저장에 실패했습니다.');
+    }
+  });
 
   baseSelect.addEventListener('change', onExchangeChange);
   overseasSelect.addEventListener('change', onExchangeChange);

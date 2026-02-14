@@ -5,6 +5,20 @@ const path = require('path');
 
 const UPBIT_TICKER_URL = 'https://api.upbit.com/v1/ticker?markets=KRW-BTC,KRW-BCH,KRW-BSV,KRW-USDT';
 const GATE_TICKER_BASE = 'https://api.gateio.ws/api/v4/spot/tickers';
+const CONFIG_PATH = path.join(__dirname, 'config.json');
+
+function readConfig() {
+  try {
+    const data = fs.readFileSync(CONFIG_PATH, 'utf8');
+    return JSON.parse(data);
+  } catch (e) {
+    return { headerRateFixed: 1445, rateDate: null };
+  }
+}
+
+function writeConfig(config) {
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf8');
+}
 
 function fetchJSON(url) {
   return new Promise((resolve, reject) => {
@@ -75,7 +89,52 @@ async function fetchGatePrices() {
   return prices;
 }
 
+function parseBody(req) {
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        resolve(body ? JSON.parse(body) : {});
+      } catch (e) {
+        resolve({});
+      }
+    });
+  });
+}
+
 const server = http.createServer(async (req, res) => {
+  if (req.url === '/api/config' && req.method === 'GET') {
+    const config = readConfig();
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify(config));
+    return;
+  }
+
+  if (req.url === '/api/config' && req.method === 'POST') {
+    try {
+      const body = await parseBody(req);
+      const rateRaw = parseFloat(body.headerRateFixed);
+      if (isNaN(rateRaw) || rateRaw < 1 || rateRaw > 999999) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid rate' }));
+        return;
+      }
+      const rate = Math.round(rateRaw * 100) / 100;
+      const rateDate = body.rateDate && /^\d{4}-\d{2}-\d{2}$/.test(String(body.rateDate))
+        ? String(body.rateDate) : null;
+      const config = { headerRateFixed: rate };
+      if (rateDate) config.rateDate = rateDate;
+      writeConfig(config);
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify(config));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   if (req.url === '/api/prices' && req.method === 'GET') {
     try {
       const [upbitData, gatePrices] = await Promise.all([
