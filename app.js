@@ -28,6 +28,10 @@ function formatTradeVolumeEok(value) {
   }).format(Math.round(eok)) + '억';
 }
 
+function formatEok2(value) {
+  return (value / 100000000).toFixed(2) + '억';
+}
+
 function formatGatePriceKrw(usdtValue, usdtKrwRate) {
   const rate = usdtKrwRate ?? USDT_KRW_RATE_FALLBACK;
   return formatKRWOnly(Math.round(usdtValue * rate));
@@ -81,8 +85,10 @@ function renderCoinList(coins, baseName, overseasName, isLoading, usdtKrwRate) {
     const changeRateClass = coin.changeRate != null && coin.changeRate >= 0 ? 'premium-positive' : 'premium-negative';
     const changeRateSign = coin.changeRate != null && coin.changeRate >= 0 ? '+' : '';
     const changeRateStr = coin.changeRate != null ? `${changeRateSign}${(coin.changeRate * 100).toFixed(2)}%` : '-';
-    const basePriceStr = hasData ? formatKRWOnly(coin.basePrice) : '-';
-    const gatePriceKrwStr = hasData ? formatGatePriceKrw(coin.overseasPrice, usdtKrwRate) : '-';
+    const basePriceStr = coin.symbol === 'BTC' && hasData
+      ? formatEok2(coin.basePrice) : (hasData ? formatKRWOnly(coin.basePrice) : '-');
+    const gatePriceKrwStr = coin.symbol === 'BTC' && hasData
+      ? formatEok2(coin.overseasPrice * rate) : (hasData ? formatGatePriceKrw(coin.overseasPrice, usdtKrwRate) : '-');
     const gatePriceUsdStr = hasData ? formatGatePriceUsd(coin.overseasPrice) : '-';
     const krwDiffStr = krwDiff != null ? `${diffSign}${formatKRWOnly(Math.abs(krwDiff))}` : '-';
     const tradeVolumeStr = coin.tradeVolume24h != null ? formatTradeVolumeEok(coin.tradeVolume24h) : '-';
@@ -136,8 +142,10 @@ function updateCoinPrices(coins, usdtKrwRate) {
     const changeRateClass = coin.changeRate != null && coin.changeRate >= 0 ? 'premium-positive' : 'premium-negative';
     const changeRateSign = coin.changeRate != null && coin.changeRate >= 0 ? '+' : '';
     const changeRateStr = coin.changeRate != null ? `${changeRateSign}${(coin.changeRate * 100).toFixed(2)}%` : '-';
-    const basePriceStr = hasData ? formatKRWOnly(coin.basePrice) : '-';
-    const gatePriceKrwStr = hasData ? formatGatePriceKrw(coin.overseasPrice, usdtKrwRate) : '-';
+    const basePriceStr = coin.symbol === 'BTC' && hasData
+      ? formatEok2(coin.basePrice) : (hasData ? formatKRWOnly(coin.basePrice) : '-');
+    const gatePriceKrwStr = coin.symbol === 'BTC' && hasData
+      ? formatEok2(coin.overseasPrice * rate) : (hasData ? formatGatePriceKrw(coin.overseasPrice, usdtKrwRate) : '-');
     const gatePriceUsdStr = hasData ? formatGatePriceUsd(coin.overseasPrice) : '-';
     const krwDiffStr = krwDiff != null ? `${diffSign}${formatKRWOnly(Math.abs(krwDiff))}` : '-';
     const tradeVolumeStr = coin.tradeVolume24h != null ? formatTradeVolumeEok(coin.tradeVolume24h) : '-';
