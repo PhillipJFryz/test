@@ -93,10 +93,14 @@ function renderCoinList(coins, baseName, overseasName, isLoading, usdtKrwRate) {
     const krwDiffStr = krwDiff != null ? `${diffSign}${formatKRWOnly(Math.abs(krwDiff))}` : '-';
     const tradeVolumeStr = coin.tradeVolume24h != null ? formatTradeVolumeEok(coin.tradeVolume24h) : '-';
     const premiumStr = coin.premium != null ? `${premiumSign}${coin.premium.toFixed(2)}%` : '-';
+    const premium = coin.premium != null ? coin.premium : 0;
+    const bsvSymbolClass = coin.symbol === 'BSV' && premium >= 5
+      ? (premium >= 20 ? 'bsv-urgent' : premium >= 10 ? 'bsv-high' : 'bsv-warn')
+      : '';
 
     tr.innerHTML = `
       <td class="cell-coin">
-        <div class="coin-symbol">${coin.symbol}</div>
+        <div class="coin-symbol ${bsvSymbolClass}">${coin.symbol}</div>
         <div class="coin-premium ${premiumClass}">${premiumStr}</div>
       </td>
       <td class="cell-upbit">
@@ -156,11 +160,15 @@ function updateCoinPrices(coins, usdtKrwRate) {
     const gateCell = row.querySelector('.cell-gate');
     const tradeVolumeDiffCell = row.querySelector('.cell-trade-volume-diff');
 
+    const premium = coin.premium != null ? coin.premium : 0;
+    const bsvSymbolClass = coin.symbol === 'BSV' && premium >= 5
+      ? (premium >= 20 ? 'bsv-urgent' : premium >= 10 ? 'bsv-high' : 'bsv-warn')
+      : '';
     const coinSymbolEl = coinCell.querySelector('.coin-symbol');
     const coinPremiumEl = coinCell.querySelector('.coin-premium');
     const coinChanged = coinSymbolEl?.textContent !== coin.symbol || coinPremiumEl?.textContent !== premiumStr;
     if (coinChanged) {
-      coinCell.innerHTML = `<div class="coin-symbol">${coin.symbol}</div><div class="coin-premium ${premiumClass}">${premiumStr}</div>`;
+      coinCell.innerHTML = `<div class="coin-symbol ${bsvSymbolClass}">${coin.symbol}</div><div class="coin-premium ${premiumClass}">${premiumStr}</div>`;
       flashCell(coinCell);
     }
     const priceEl = upbitCell.querySelector('.upbit-price');
