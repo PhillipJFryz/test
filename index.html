@@ -3,14 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>코인프리미엄 - 거래소 시세 비교</title>
+  <title>test - 거래소 시세 비교</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="header">
     <div class="logo">
-      <h1>코인프리미엄</h1>
-      <span class="subtitle">거래소 시세차이 정보</span>
+      <h1>test</h1>
     </div>
   </header>
 
@@ -27,31 +26,26 @@
         <label for="overseasExchange">해외 거래소</label>
         <select id="overseasExchange" class="select">
           <option value="">거래소 선택</option>
-          <option value="gate_usdt" selected>Gate USDT 마켓</option>
+          <option value="gate_usdt" selected>Gate</option>
         </select>
       </div>
     </section>
 
     <section class="coin-list-section">
-      <div class="list-header">
-        <span class="notice">* 거래소를 선택하면 코인 리스트가 표시됩니다.</span>
-      </div>
       <div class="coin-list-container">
         <table class="coin-table" id="coinTable">
           <thead>
             <tr>
               <th>코인</th>
-              <th>전일대비</th>
               <th>기준 거래소 가격</th>
               <th>해외 거래소 가격</th>
-              <th>원화 차액</th>
-              <th>거래액(일)</th>
-              <th>프리미엄</th>
+              <th>거래/차액</th>
+              <th>비율</th>
             </tr>
           </thead>
           <tbody id="coinTableBody">
             <tr class="empty-state">
-              <td colspan="7">기준 거래소와 해외 거래소를 선택해주세요.</td>
+              <td colspan="5">기준 거래소와 해외 거래소를 선택해주세요.</td>
             </tr>
           </tbody>
         </table>
