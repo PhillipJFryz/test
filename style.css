@@ -160,6 +160,11 @@ body {
   font-weight: 600;
 }
 
+.coin-premium {
+  font-size: 0.8em;
+  margin-top: 0.2rem;
+}
+
 .upbit-price {
   font-weight: 500;
 }
@@ -208,10 +213,10 @@ body {
   100% { background: transparent; }
 }
 
+.cell-coin.cell-flash,
 .cell-upbit.cell-flash,
 .cell-gate.cell-flash,
-.cell-trade-volume-diff.cell-flash,
-.cell-premium.cell-flash {
+.cell-trade-volume-diff.cell-flash {
   animation: cell-flash 0.6s ease-out;
 }
 

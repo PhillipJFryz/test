@@ -57,12 +57,12 @@ function renderCoinList(coins, baseName, overseasName, isLoading, usdtKrwRate) {
   tbody.innerHTML = '';
 
   if (isLoading) {
-    tbody.innerHTML = '<tr class="empty-state"><td colspan="5">데이터 로딩 중...</td></tr>';
+    tbody.innerHTML = '<tr class="empty-state"><td colspan="4">데이터 로딩 중...</td></tr>';
     return;
   }
 
   if (!coins || coins.length === 0) {
-    tbody.innerHTML = '<tr class="empty-state"><td colspan="5">표시할 데이터가 없습니다.</td></tr>';
+    tbody.innerHTML = '<tr class="empty-state"><td colspan="4">표시할 데이터가 없습니다.</td></tr>';
     return;
   }
 
@@ -89,10 +89,9 @@ function renderCoinList(coins, baseName, overseasName, isLoading, usdtKrwRate) {
     const premiumStr = coin.premium != null ? `${premiumSign}${coin.premium.toFixed(2)}%` : '-';
 
     tr.innerHTML = `
-      <td>
-        <div class="coin-name">
-          <span class="coin-symbol">${coin.symbol}</span>
-        </div>
+      <td class="cell-coin">
+        <div class="coin-symbol">${coin.symbol}</div>
+        <div class="coin-premium ${premiumClass}">${premiumStr}</div>
       </td>
       <td class="cell-upbit">
         <div class="upbit-price">${basePriceStr}</div>
@@ -106,7 +105,6 @@ function renderCoinList(coins, baseName, overseasName, isLoading, usdtKrwRate) {
         <div class="trade-volume">${tradeVolumeStr}</div>
         <div class="trade-diff ${diffClass}">${krwDiffStr}</div>
       </td>
-      <td class="cell-premium ${premiumClass}">${premiumStr}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -145,11 +143,18 @@ function updateCoinPrices(coins, usdtKrwRate) {
     const tradeVolumeStr = coin.tradeVolume24h != null ? formatTradeVolumeEok(coin.tradeVolume24h) : '-';
     const premiumStr = coin.premium != null ? `${premiumSign}${coin.premium.toFixed(2)}%` : '-';
 
+    const coinCell = row.querySelector('.cell-coin');
     const upbitCell = row.querySelector('.cell-upbit');
     const gateCell = row.querySelector('.cell-gate');
     const tradeVolumeDiffCell = row.querySelector('.cell-trade-volume-diff');
-    const premiumCell = row.querySelector('.cell-premium');
 
+    const coinSymbolEl = coinCell.querySelector('.coin-symbol');
+    const coinPremiumEl = coinCell.querySelector('.coin-premium');
+    const coinChanged = coinSymbolEl?.textContent !== coin.symbol || coinPremiumEl?.textContent !== premiumStr;
+    if (coinChanged) {
+      coinCell.innerHTML = `<div class="coin-symbol">${coin.symbol}</div><div class="coin-premium ${premiumClass}">${premiumStr}</div>`;
+      flashCell(coinCell);
+    }
     const priceEl = upbitCell.querySelector('.upbit-price');
     const changeEl = upbitCell.querySelector('.upbit-change-rate');
     const priceChanged = priceEl?.textContent !== basePriceStr;
@@ -172,17 +177,12 @@ function updateCoinPrices(coins, usdtKrwRate) {
       tradeVolumeDiffCell.innerHTML = `<div class="trade-volume">${tradeVolumeStr}</div><div class="trade-diff ${diffClass}">${krwDiffStr}</div>`;
       flashCell(tradeVolumeDiffCell);
     }
-    if (premiumCell.textContent !== premiumStr) {
-      premiumCell.textContent = premiumStr;
-      premiumCell.className = `cell-premium ${premiumClass}`;
-      flashCell(premiumCell);
-    }
   });
 }
 
 function updateTableHeaders(baseExchange, overseasExchange) {
   const ths = document.querySelectorAll('.coin-table th');
-  if (ths.length >= 4) {
+  if (ths.length >= 3) {
     ths[1].textContent = baseExchange.headerName || baseExchange.name;
     ths[2].textContent = overseasExchange.headerName || overseasExchange.name;
   }
@@ -197,7 +197,7 @@ async function onExchangeChange() {
   const tbody = document.getElementById('coinTableBody');
 
   if (!baseValue || !overseasValue) {
-    tbody.innerHTML = '<tr class="empty-state"><td colspan="5">기준 거래소와 해외 거래소를 선택해주세요.</td></tr>';
+    tbody.innerHTML = '<tr class="empty-state"><td colspan="4">기준 거래소와 해외 거래소를 선택해주세요.</td></tr>';
     return;
   }
 
