@@ -8,7 +8,7 @@ let headerRateDate = null;
 // 거래소 정보
 const exchanges = {
   base: {
-    upbit: { name: '업비트', code: 'upbit', headerName: '업비트' }
+    upbit: { name: '업비트', code: 'upbit', headerName: 'Upbit' }
   },
   overseas: {
     gate_usdt: { name: 'Gate USDT 마켓', code: 'gate_usdt', headerName: 'Gate' }
@@ -38,6 +38,21 @@ function formatTradeVolumeEok(value) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   }).format(Math.round(eok)) + '억';
+}
+
+function formatTradeVolumeEokNumber(value) {
+  const eok = value / 100000000;
+  return new Intl.NumberFormat('ko-KR', {
+    style: 'decimal',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(Math.round(eok));
+}
+
+function formatGateTradeVolumeEok(quoteVolumeUsdt, usdtKrwRate) {
+  const rate = usdtKrwRate ?? USDT_KRW_RATE_FALLBACK;
+  const krwVolume = (quoteVolumeUsdt || 0) * rate;
+  return formatTradeVolumeEokNumber(krwVolume);
 }
 
 function formatEok2(value) {
@@ -108,6 +123,19 @@ function formatDisplayDate(dateStr) {
   return `${y}.${m}.${d}`;
 }
 
+function getTodayDateStr() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}.${m}.${d}`;
+}
+
+function updateHeaderTodayDate() {
+  const el = document.getElementById('headerTodayDate');
+  if (el) el.textContent = getTodayDateStr();
+}
+
 function renderCoinList(coins, baseName, overseasName, isLoading, usdtKrwRate) {
   const tbody = document.getElementById('coinTableBody');
   tbody.innerHTML = '';
@@ -143,12 +171,18 @@ function renderCoinList(coins, baseName, overseasName, isLoading, usdtKrwRate) {
       ? formatEok2(coin.overseasPrice * rate) : (hasData ? formatGatePriceKrw(coin.overseasPrice, usdtKrwRate) : '-');
     const gatePriceUsdStr = hasData ? formatGatePriceUsd(coin.overseasPrice) : '-';
     const krwDiffStr = krwDiff != null ? `${diffSign}${formatKRWOnly(Math.abs(krwDiff))}` : '-';
-    const tradeVolumeStr = coin.tradeVolume24h != null ? formatTradeVolumeEok(coin.tradeVolume24h) : '-';
+    const upbitTradeVolumeStr = coin.tradeVolume24h != null ? formatTradeVolumeEokNumber(coin.tradeVolume24h) : '-';
+    const gateTradeVolumeStr = coin.gateQuoteVolume24h != null
+      ? formatGateTradeVolumeEok(coin.gateQuoteVolume24h, usdtKrwRate) : '-';
     const premiumStr = coin.premium != null ? `${premiumSign}${coin.premium.toFixed(2)}%` : '-';
     const premium = coin.premium != null ? coin.premium : 0;
     const bsvSymbolClass = coin.symbol === 'BSV' && premium >= 5
       ? (premium >= 20 ? 'bsv-urgent' : premium >= 10 ? 'bsv-high' : 'bsv-warn')
       : '';
+
+    const gateCellContent = coin.symbol === 'USDT'
+      ? '<div class="gate-price-krw">$1.00</div>'
+      : `<div class="gate-price-krw">${gatePriceKrwStr}${krwDiffStr !== '-' ? ` (<span class="${diffClass}">${krwDiffStr}</span>)` : ''}</div><div class="gate-price-usd">${gatePriceUsdStr}</div>`;
 
     tr.innerHTML = `
       <td class="cell-coin">
@@ -160,12 +194,11 @@ function renderCoinList(coins, baseName, overseasName, isLoading, usdtKrwRate) {
         <div class="upbit-change-rate ${changeRateClass}">${changeRateStr}</div>
       </td>
       <td class="cell-gate">
-        <div class="gate-price-krw">${gatePriceKrwStr}</div>
-        <div class="gate-price-usd">${gatePriceUsdStr}</div>
+        ${gateCellContent}
       </td>
-      <td class="cell-trade-volume-diff">
-        <div class="trade-volume">${tradeVolumeStr}</div>
-        <div class="trade-diff ${diffClass}">${krwDiffStr}</div>
+      <td class="cell-trade-volume">
+        <div class="trade-volume-upbit">${upbitTradeVolumeStr}</div>
+        <div class="trade-volume-gate">${gateTradeVolumeStr}</div>
       </td>
     `;
     tbody.appendChild(tr);
@@ -204,13 +237,20 @@ function updateCoinPrices(coins, usdtKrwRate) {
       ? formatEok2(coin.overseasPrice * rate) : (hasData ? formatGatePriceKrw(coin.overseasPrice, usdtKrwRate) : '-');
     const gatePriceUsdStr = hasData ? formatGatePriceUsd(coin.overseasPrice) : '-';
     const krwDiffStr = krwDiff != null ? `${diffSign}${formatKRWOnly(Math.abs(krwDiff))}` : '-';
-    const tradeVolumeStr = coin.tradeVolume24h != null ? formatTradeVolumeEok(coin.tradeVolume24h) : '-';
+    const upbitTradeVolumeStr = coin.tradeVolume24h != null ? formatTradeVolumeEokNumber(coin.tradeVolume24h) : '-';
+    const gateTradeVolumeStr = coin.gateQuoteVolume24h != null
+      ? formatGateTradeVolumeEok(coin.gateQuoteVolume24h, usdtKrwRate) : '-';
     const premiumStr = coin.premium != null ? `${premiumSign}${coin.premium.toFixed(2)}%` : '-';
+
+    const gatePriceKrwWithDiff = `${gatePriceKrwStr}${krwDiffStr !== '-' ? ` (<span class="${diffClass}">${krwDiffStr}</span>)` : ''}`;
+    const gateCellContent = coin.symbol === 'USDT'
+      ? '<div class="gate-price-krw">$1.00</div>'
+      : `<div class="gate-price-krw">${gatePriceKrwWithDiff}</div><div class="gate-price-usd">${gatePriceUsdStr}</div>`;
 
     const coinCell = row.querySelector('.cell-coin');
     const upbitCell = row.querySelector('.cell-upbit');
     const gateCell = row.querySelector('.cell-gate');
-    const tradeVolumeDiffCell = row.querySelector('.cell-trade-volume-diff');
+    const tradeVolumeCell = row.querySelector('.cell-trade-volume');
 
     const premium = coin.premium != null ? coin.premium : 0;
     const bsvSymbolClass = coin.symbol === 'BSV' && premium >= 5
@@ -233,17 +273,19 @@ function updateCoinPrices(coins, usdtKrwRate) {
     }
     const gateKrwEl = gateCell.querySelector('.gate-price-krw');
     const gateUsdEl = gateCell.querySelector('.gate-price-usd');
-    const gateChanged = gateKrwEl?.textContent !== gatePriceKrwStr || gateUsdEl?.textContent !== gatePriceUsdStr;
+    const gateChanged = coin.symbol === 'USDT'
+      ? gateKrwEl?.textContent !== '$1.00'
+      : (gateKrwEl?.innerHTML !== gatePriceKrwWithDiff || gateUsdEl?.textContent !== gatePriceUsdStr);
     if (gateChanged) {
-      gateCell.innerHTML = `<div class="gate-price-krw">${gatePriceKrwStr}</div><div class="gate-price-usd">${gatePriceUsdStr}</div>`;
+      gateCell.innerHTML = gateCellContent;
       flashCell(gateCell);
     }
-    const tradeVolumeEl = tradeVolumeDiffCell.querySelector('.trade-volume');
-    const tradeDiffEl = tradeVolumeDiffCell.querySelector('.trade-diff');
-    const tradeVolumeDiffChanged = tradeVolumeEl?.textContent !== tradeVolumeStr || tradeDiffEl?.textContent !== krwDiffStr;
-    if (tradeVolumeDiffChanged) {
-      tradeVolumeDiffCell.innerHTML = `<div class="trade-volume">${tradeVolumeStr}</div><div class="trade-diff ${diffClass}">${krwDiffStr}</div>`;
-      flashCell(tradeVolumeDiffCell);
+    const upbitTradeEl = tradeVolumeCell.querySelector('.trade-volume-upbit');
+    const gateTradeEl = tradeVolumeCell.querySelector('.trade-volume-gate');
+    const tradeVolumeChanged = upbitTradeEl?.textContent !== upbitTradeVolumeStr || gateTradeEl?.textContent !== gateTradeVolumeStr;
+    if (tradeVolumeChanged) {
+      tradeVolumeCell.innerHTML = `<div class="trade-volume-upbit">${upbitTradeVolumeStr}</div><div class="trade-volume-gate">${gateTradeVolumeStr}</div>`;
+      flashCell(tradeVolumeCell);
     }
   });
 }
@@ -313,6 +355,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const rateModalSave = document.getElementById('rateModalSave');
 
   await fetchConfig();
+  updateHeaderTodayDate();
 
   rateEditBtn.addEventListener('click', () => {
     rateInput.value = Number(headerRateFixed).toFixed(2);

@@ -81,12 +81,14 @@ async function fetchGatePrices() {
     pairs.map(p => fetchJSON(`${GATE_TICKER_BASE}?currency_pair=${p.pair}`))
   );
   const prices = {};
+  const quoteVolumes = {};
   results.forEach((data, i) => {
     if (Array.isArray(data) && data[0]) {
       prices[pairs[i].symbol] = parseFloat(data[0].last);
+      quoteVolumes[pairs[i].symbol] = parseFloat(data[0].quote_volume) || 0;
     }
   });
-  return prices;
+  return { prices, quoteVolumes };
 }
 
 function parseBody(req) {
@@ -137,12 +139,13 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === '/api/prices' && req.method === 'GET') {
     try {
-      const [upbitData, gatePrices] = await Promise.all([
+      const [upbitData, gateData] = await Promise.all([
         fetchUpbitPrices(),
         fetchGatePrices()
       ]);
 
       const { prices: upbitPrices, changeRates, tradeVolumes24h, usdtKrwRate } = upbitData;
+      const { prices: gatePrices, quoteVolumes: gateQuoteVolumes } = gateData;
 
       const coins = [
         { symbol: 'BSV', name: 'Bitcoin SV' },
@@ -152,6 +155,7 @@ const server = http.createServer(async (req, res) => {
       ].map(coin => {
         const basePrice = upbitPrices[coin.symbol];
         const overseasPrice = gatePrices[coin.symbol];
+        const gateQuoteVolume = gateQuoteVolumes[coin.symbol];
         const gatePriceKRW = (overseasPrice && usdtKrwRate) ? overseasPrice * usdtKrwRate : 0;
         const premium = (basePrice && gatePriceKRW)
           ? ((basePrice - gatePriceKRW) / gatePriceKRW) * 100
@@ -165,7 +169,8 @@ const server = http.createServer(async (req, res) => {
           overseasPrice: overseasPrice || null,
           premium: premium,
           changeRate: changeRate != null ? changeRate : null,
-          tradeVolume24h: tradeVolume24h != null ? tradeVolume24h : null
+          tradeVolume24h: tradeVolume24h != null ? tradeVolume24h : null,
+          gateQuoteVolume24h: gateQuoteVolume != null ? gateQuoteVolume : null
         };
       });
 
