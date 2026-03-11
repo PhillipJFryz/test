@@ -1,9 +1,7 @@
 // 1 USDT = 1460 KRW (API 실패 시 폴백, 정상 시 업비트 KRW-USDT 실시간 시세 사용)
 const USDT_KRW_RATE_FALLBACK = 1460;
-// 우측상단 환율 고정 기준값 (config에서 로드, 기본 1445)
-let headerRateFixed = 1445;
-// 환율 기준 날짜 (config에서 로드)
-let headerRateDate = null;
+// 우측 원/달러 환율 API 실패 시 폴백 (김프가 등 금일 기준)
+const USD_KRW_RATE_FALLBACK = 1477.7;
 
 // 거래소 정보
 const exchanges = {
@@ -49,8 +47,8 @@ function formatTradeVolumeEokNumber(value) {
   }).format(Math.round(eok));
 }
 
-function formatGateTradeVolumeEok(quoteVolumeUsdt, usdtKrwRate) {
-  const rate = usdtKrwRate ?? USDT_KRW_RATE_FALLBACK;
+function formatGateTradeVolumeEok(quoteVolumeUsdt, gateKrwRate) {
+  const rate = gateKrwRate ?? USD_KRW_RATE_FALLBACK;
   const krwVolume = (quoteVolumeUsdt || 0) * rate;
   return formatTradeVolumeEokNumber(krwVolume);
 }
@@ -59,8 +57,8 @@ function formatEok2(value) {
   return (value / 100000000).toFixed(2) + '억';
 }
 
-function formatGatePriceKrw(usdtValue, usdtKrwRate) {
-  const rate = usdtKrwRate ?? USDT_KRW_RATE_FALLBACK;
+function formatGatePriceKrw(usdtValue, gateKrwRate) {
+  const rate = gateKrwRate ?? USD_KRW_RATE_FALLBACK;
   return formatKRWOnly(Math.round(usdtValue * rate));
 }
 
@@ -83,46 +81,6 @@ async function fetchPrices() {
   }
 }
 
-async function fetchConfig() {
-  try {
-    const res = await fetch('/api/config');
-    if (!res.ok) return;
-    const data = await res.json();
-    if (data.headerRateFixed != null) {
-      headerRateFixed = Math.round(parseFloat(data.headerRateFixed) * 100) / 100;
-    }
-    headerRateDate = data.rateDate || null;
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function saveConfig(rate, rateDate) {
-  try {
-    const body = { headerRateFixed: rate };
-    if (rateDate) body.rateDate = rateDate;
-    const res = await fetch('/api/config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    if (!res.ok) throw new Error('저장 실패');
-    const data = await res.json();
-    headerRateFixed = Math.round(parseFloat(data.headerRateFixed) * 100) / 100;
-    headerRateDate = data.rateDate || null;
-    return true;
-  } catch (err) {
-    console.error(err);
-    return false;
-  }
-}
-
-function formatDisplayDate(dateStr) {
-  if (!dateStr) return '';
-  const [y, m, d] = dateStr.split('-');
-  return `${y}.${m}.${d}`;
-}
-
 function getTodayDateStr() {
   const now = new Date();
   const y = now.getFullYear();
@@ -136,7 +94,7 @@ function updateHeaderTodayDate() {
   if (el) el.textContent = getTodayDateStr();
 }
 
-function renderCoinList(coins, baseName, overseasName, isLoading, usdtKrwRate) {
+function renderCoinList(coins, baseName, overseasName, isLoading, gateKrwRate) {
   const tbody = document.getElementById('coinTableBody');
   tbody.innerHTML = '';
 
@@ -150,7 +108,7 @@ function renderCoinList(coins, baseName, overseasName, isLoading, usdtKrwRate) {
     return;
   }
 
-  const rate = usdtKrwRate ?? USDT_KRW_RATE_FALLBACK;
+  const rate = gateKrwRate ?? USD_KRW_RATE_FALLBACK;
 
   coins.forEach(coin => {
     const tr = document.createElement('tr');
@@ -168,12 +126,12 @@ function renderCoinList(coins, baseName, overseasName, isLoading, usdtKrwRate) {
     const basePriceStr = coin.symbol === 'BTC' && hasData
       ? formatEok2(coin.basePrice) : (hasData ? formatKRWOnly(coin.basePrice) : '-');
     const gatePriceKrwStr = coin.symbol === 'BTC' && hasData
-      ? formatEok2(coin.overseasPrice * rate) : (hasData ? formatGatePriceKrw(coin.overseasPrice, usdtKrwRate) : '-');
+      ? formatEok2(coin.overseasPrice * rate) : (hasData ? formatGatePriceKrw(coin.overseasPrice, gateKrwRate) : '-');
     const gatePriceUsdStr = hasData ? formatGatePriceUsd(coin.overseasPrice) : '-';
     const krwDiffStr = krwDiff != null ? `${diffSign}${formatKRWOnly(Math.abs(krwDiff))}` : '-';
     const upbitTradeVolumeStr = coin.tradeVolume24h != null ? formatTradeVolumeEokNumber(coin.tradeVolume24h) : '-';
     const gateTradeVolumeStr = coin.gateQuoteVolume24h != null
-      ? formatGateTradeVolumeEok(coin.gateQuoteVolume24h, usdtKrwRate) : '-';
+      ? formatGateTradeVolumeEok(coin.gateQuoteVolume24h, gateKrwRate) : '-';
     const premiumStr = coin.premium != null ? `${premiumSign}${coin.premium.toFixed(2)}%` : '-';
     const premium = coin.premium != null ? coin.premium : 0;
     const bsvSymbolClass = coin.symbol === 'BSV' && premium >= 5
@@ -212,10 +170,10 @@ function flashCell(cell) {
   cell.addEventListener('animationend', () => cell.classList.remove('cell-flash'), { once: true });
 }
 
-function updateCoinPrices(coins, usdtKrwRate) {
+function updateCoinPrices(coins, gateKrwRate) {
   if (!coins || coins.length === 0) return;
 
-  const rate = usdtKrwRate ?? USDT_KRW_RATE_FALLBACK;
+  const rate = gateKrwRate ?? USD_KRW_RATE_FALLBACK;
 
   coins.forEach(coin => {
     const row = document.querySelector(`#coinTableBody tr[data-symbol="${coin.symbol}"]`);
@@ -234,12 +192,12 @@ function updateCoinPrices(coins, usdtKrwRate) {
     const basePriceStr = coin.symbol === 'BTC' && hasData
       ? formatEok2(coin.basePrice) : (hasData ? formatKRWOnly(coin.basePrice) : '-');
     const gatePriceKrwStr = coin.symbol === 'BTC' && hasData
-      ? formatEok2(coin.overseasPrice * rate) : (hasData ? formatGatePriceKrw(coin.overseasPrice, usdtKrwRate) : '-');
+      ? formatEok2(coin.overseasPrice * rate) : (hasData ? formatGatePriceKrw(coin.overseasPrice, gateKrwRate) : '-');
     const gatePriceUsdStr = hasData ? formatGatePriceUsd(coin.overseasPrice) : '-';
     const krwDiffStr = krwDiff != null ? `${diffSign}${formatKRWOnly(Math.abs(krwDiff))}` : '-';
     const upbitTradeVolumeStr = coin.tradeVolume24h != null ? formatTradeVolumeEokNumber(coin.tradeVolume24h) : '-';
     const gateTradeVolumeStr = coin.gateQuoteVolume24h != null
-      ? formatGateTradeVolumeEok(coin.gateQuoteVolume24h, usdtKrwRate) : '-';
+      ? formatGateTradeVolumeEok(coin.gateQuoteVolume24h, gateKrwRate) : '-';
     const premiumStr = coin.premium != null ? `${premiumSign}${coin.premium.toFixed(2)}%` : '-';
 
     const gatePriceKrwWithDiff = `${gatePriceKrwStr}${krwDiffStr !== '-' ? ` (<span class="${diffClass}">${krwDiffStr}</span>)` : ''}`;
@@ -290,20 +248,38 @@ function updateCoinPrices(coins, usdtKrwRate) {
   });
 }
 
-function updateHeaderRate(usdtKrwRate) {
+function updateHeaderRate(usdtKrwRate, changeRate) {
   const el = document.getElementById('headerRate');
   const dateEl = document.getElementById('headerDate');
   if (!el) return;
-  const fixedStr = formatKRW2Decimals(headerRateFixed);
+  const todayStr = getTodayDateStr();
+  if (dateEl) dateEl.textContent = todayStr ? `금일 ${todayStr}` : '';
   if (usdtKrwRate == null) {
-    el.innerHTML = `환율 : ${fixedStr}원(<span class="header-rate-percent">-</span>)`;
-  } else {
-    const diff = usdtKrwRate - headerRateFixed;
-    const percentDiff = (diff / headerRateFixed) * 100;
-    const sign = percentDiff >= 0 ? '+' : '';
-    el.innerHTML = `환율 : ${fixedStr}원(<span class="header-rate-percent">${sign}${percentDiff.toFixed(2)}%</span>)`;
+    el.textContent = '원/달러 : - 원';
+    return;
   }
-  if (dateEl) dateEl.textContent = formatDisplayDate(headerRateDate);
+  const rateStr = formatKRW2Decimals(usdtKrwRate);
+  el.textContent = `원/달러 : ${rateStr}원`;
+}
+
+function updateDocumentTitle(coins) {
+  if (!coins || coins.length === 0) {
+    document.title = 'Coin - 거래소 시세 비교';
+    return;
+  }
+  const bsv = coins.find(c => c.symbol === 'BSV');
+  if (!bsv) {
+    document.title = 'Coin - 거래소 시세 비교';
+    return;
+  }
+  const premiumStr = bsv.premium != null
+    ? (bsv.premium >= 0 ? '+' : '') + bsv.premium.toFixed(2) + '%'
+    : '-';
+  const priceStr = bsv.basePrice != null ? formatKRWOnly(bsv.basePrice) + '원' : '-';
+  const changeStr = bsv.changeRate != null
+    ? (bsv.changeRate >= 0 ? '+' : '') + (bsv.changeRate * 100).toFixed(2) + '%'
+    : '-';
+  document.title = `BSV 김프 ${premiumStr} | ${priceStr} | ${changeStr}`;
 }
 
 function updateTableHeaders(baseExchange, overseasExchange) {
@@ -337,9 +313,10 @@ async function onExchangeChange() {
 
   const data = await fetchPrices();
   const coins = data?.coins || [];
-  const usdtKrwRate = data?.krwRate; // 1 USDT = N KRW (업비트 KRW-USDT)
-  renderCoinList(coins, baseExchange.name, overseasExchange.name, false, usdtKrwRate);
-  updateHeaderRate(usdtKrwRate);
+  const gateKrwRate = data?.usdKrwRate ?? USD_KRW_RATE_FALLBACK;
+  renderCoinList(coins, baseExchange.name, overseasExchange.name, false, gateKrwRate);
+  updateHeaderRate(data?.usdKrwRate ?? USD_KRW_RATE_FALLBACK, data?.usdKrwRateChange ?? data?.krwRateChange);
+  updateDocumentTitle(coins);
 }
 
 const REFRESH_INTERVAL = 3000;
@@ -347,49 +324,8 @@ const REFRESH_INTERVAL = 3000;
 document.addEventListener('DOMContentLoaded', async () => {
   const baseSelect = document.getElementById('baseExchange');
   const overseasSelect = document.getElementById('overseasExchange');
-  const rateEditBtn = document.getElementById('headerRateEdit');
-  const rateModal = document.getElementById('rateModal');
-  const rateInput = document.getElementById('rateInput');
-  const dateInput = document.getElementById('dateInput');
-  const rateModalCancel = document.getElementById('rateModalCancel');
-  const rateModalSave = document.getElementById('rateModalSave');
 
-  await fetchConfig();
   updateHeaderTodayDate();
-
-  rateEditBtn.addEventListener('click', () => {
-    rateInput.value = Number(headerRateFixed).toFixed(2);
-    dateInput.value = headerRateDate || new Date().toISOString().slice(0, 10);
-    rateModal.classList.add('is-open');
-    rateInput.focus();
-  });
-
-  rateModalCancel.addEventListener('click', () => {
-    rateModal.classList.remove('is-open');
-  });
-
-  rateModal.addEventListener('click', (e) => {
-    if (e.target === rateModal) rateModal.classList.remove('is-open');
-  });
-
-  rateModalSave.addEventListener('click', async () => {
-    const val = parseFloat(rateInput.value);
-    if (isNaN(val) || val < 1 || val > 999999) {
-      alert('1 ~ 999,999 사이의 숫자를 입력하세요.');
-      return;
-    }
-    const valRounded = Math.round(val * 100) / 100;
-    const dateVal = dateInput.value || null;
-    const ok = await saveConfig(valRounded, dateVal);
-    if (ok) {
-      rateModal.classList.remove('is-open');
-      updateHeaderRate(null);
-      const data = await fetchPrices();
-      if (data?.krwRate != null) updateHeaderRate(data.krwRate);
-    } else {
-      alert('저장에 실패했습니다.');
-    }
-  });
 
   baseSelect.addEventListener('change', onExchangeChange);
   overseasSelect.addEventListener('change', onExchangeChange);
@@ -405,8 +341,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const data = await fetchPrices();
     const coins = data?.coins || [];
-    const usdtKrwRate = data?.krwRate; // 1 USDT = N KRW (업비트 KRW-USDT)
-    updateCoinPrices(coins, usdtKrwRate);
-    updateHeaderRate(usdtKrwRate);
+    const gateKrwRate = data?.usdKrwRate ?? USD_KRW_RATE_FALLBACK;
+    updateCoinPrices(coins, gateKrwRate);
+    updateHeaderRate(data?.usdKrwRate ?? USD_KRW_RATE_FALLBACK, data?.usdKrwRateChange ?? data?.krwRateChange);
+    updateDocumentTitle(coins);
   }, REFRESH_INTERVAL);
 });

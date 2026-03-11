@@ -2,9 +2,13 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
+const iconv = require('iconv-lite');
 
 const UPBIT_TICKER_URL = 'https://api.upbit.com/v1/ticker?markets=KRW-BTC,KRW-BCH,KRW-BSV,KRW-USDT';
 const GATE_TICKER_BASE = 'https://api.gateio.ws/api/v4/spot/tickers';
+const NAVER_FINANCE_URL = 'https://finance.naver.com/marketindex/';
+const USD_KRW_FALLBACK = 1477.7;
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 
 function readConfig() {
@@ -91,6 +95,55 @@ async function fetchGatePrices() {
   return { prices, quoteVolumes };
 }
 
+function fetchNaverMarketIndexHtml() {
+  return new Promise((resolve, reject) => {
+    const url = new URL(NAVER_FINANCE_URL);
+    const options = {
+      hostname: url.hostname,
+      path: url.pathname + url.search,
+      method: 'GET',
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'ko-KR,ko;q=0.9',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    };
+    https.get(options, (res) => {
+      const chunks = [];
+      res.on('data', chunk => chunks.push(chunk));
+      res.on('end', () => {
+        let buf = Buffer.concat(chunks);
+        const encoding = (res.headers['content-encoding'] || '').toLowerCase();
+        if (encoding === 'gzip') {
+          buf = zlib.gunzipSync(buf);
+        } else if (encoding === 'br') {
+          buf = zlib.brotliDecompressSync(buf);
+        } else if (encoding === 'deflate') {
+          buf = zlib.inflateSync(buf);
+        }
+        const html = iconv.decode(buf, 'euc-kr');
+        resolve(html);
+      });
+    }).on('error', reject);
+  });
+}
+
+async function fetchUsdKrwRateFromNaver() {
+  try {
+    const html = await fetchNaverMarketIndexHtml();
+    let match = html.match(/marketindexCd=FX_USDKRW[\s\S]{0,600}?([1-2],[0-9]{3}(?:\.[0-9]+)?)/);
+    if (!match) {
+      match = html.match(/FX_USDKRW[\s\S]{0,600}?([1-2],[0-9]{3}(?:\.[0-9]+)?)/);
+    }
+    if (!match || !match[1]) return null;
+    const rate = parseFloat(match[1].replace(/,/g, ''));
+    if (Number.isFinite(rate) && rate > 100 && rate < 3000) return Math.round(rate * 10) / 10;
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
 function parseBody(req) {
   return new Promise((resolve) => {
     let body = '';
@@ -139,9 +192,10 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === '/api/prices' && req.method === 'GET') {
     try {
-      const [upbitData, gateData] = await Promise.all([
+      const [upbitData, gateData, usdKrwRate] = await Promise.all([
         fetchUpbitPrices(),
-        fetchGatePrices()
+        fetchGatePrices(),
+        fetchUsdKrwRateFromNaver()
       ]);
 
       const { prices: upbitPrices, changeRates, tradeVolumes24h, usdtKrwRate } = upbitData;
@@ -156,7 +210,8 @@ const server = http.createServer(async (req, res) => {
         const basePrice = upbitPrices[coin.symbol];
         const overseasPrice = gatePrices[coin.symbol];
         const gateQuoteVolume = gateQuoteVolumes[coin.symbol];
-        const gatePriceKRW = (overseasPrice && usdtKrwRate) ? overseasPrice * usdtKrwRate : 0;
+        const gateKrwRate = usdKrwRate ?? USD_KRW_FALLBACK;
+        const gatePriceKRW = (overseasPrice && gateKrwRate) ? overseasPrice * gateKrwRate : 0;
         const premium = (basePrice && gatePriceKRW)
           ? ((basePrice - gatePriceKRW) / gatePriceKRW) * 100
           : null;
@@ -178,7 +233,13 @@ const server = http.createServer(async (req, res) => {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
       });
-      res.end(JSON.stringify({ coins, krwRate: usdtKrwRate })); // krwRate: 1 USDT = N KRW
+      res.end(JSON.stringify({
+        coins,
+        krwRate: usdtKrwRate,
+        krwRateChange: changeRates?.USDT ?? null,
+        usdKrwRate: usdKrwRate ?? null,
+        usdKrwRateChange: null
+      }));
     } catch (err) {
       console.error(err);
       res.writeHead(500, { 'Content-Type': 'application/json' });
