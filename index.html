@@ -3,62 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Coin - 거래소 시세 비교</title>
+  <title>코인프리미엄 · 거래소 시세 비교</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="header">
-    <div class="logo-block">
-      <h1 class="logo">Coin</h1>
-      <span class="header-today-date" id="headerTodayDate"></span>
-    </div>
-    <div class="header-rate-wrap">
-      <div class="header-rate-block">
-        <span class="header-rate" id="headerRate">원/달러 : - 원</span>
-        <span class="header-date" id="headerDate"></span>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-text">
+          <span class="brand-name">CP</span>
+          <span class="brand-date" id="headerTodayDate"></span>
+        </div>
       </div>
-    </div>
-  </header>
+    </header>
 
-  <main class="main">
-    <section class="exchange-selector">
-      <div class="selector-group">
-        <label for="baseExchange">기준 거래소</label>
-        <select id="baseExchange" class="select">
-          <option value="">거래소 선택</option>
-          <option value="upbit" selected>Upbit</option>
-        </select>
-      </div>
-      <div class="selector-group">
-        <label for="overseasExchange">해외 거래소</label>
-        <select id="overseasExchange" class="select">
-          <option value="">거래소 선택</option>
-          <option value="gate_usdt" selected>Gate</option>
-        </select>
-      </div>
-    </section>
+    <main class="main">
+      <section class="controls">
+        <div class="control-group">
+          <span class="control-label">기준 거래소</span>
+          <div class="fixed-exchange">Upbit</div>
+        </div>
+        <div class="control-group">
+          <span class="control-label">비교 거래소</span>
+          <div class="segmented" id="comparisonSegmented" role="tablist">
+            <button class="segmented-btn is-active" data-value="gate" type="button" role="tab" aria-selected="true">Gate</button>
+            <button class="segmented-btn" data-value="binance" type="button" role="tab" aria-selected="false">Binance</button>
+            <button class="segmented-btn" data-value="bithumb" type="button" role="tab" aria-selected="false">Bithumb</button>
+          </div>
+        </div>
+        <div class="status-indicator" id="statusIndicator">
+          <span class="status-dot"></span>
+          <span class="status-text">실시간 갱신</span>
+        </div>
+      </section>
 
-    <section class="coin-list-section">
-      <div class="coin-list-container">
-        <table class="coin-table" id="coinTable">
-          <thead>
-            <tr>
-              <th>김프</th>
-              <th>기준 거래소 가격</th>
-              <th>해외 거래소 가격</th>
-              <th>거래(억)</th>
-            </tr>
-          </thead>
-          <tbody id="coinTableBody">
-            <tr class="empty-state">
-              <td colspan="4">기준 거래소와 해외 거래소를 선택해주세요.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </main>
-
+      <section class="coin-grid" id="coinGrid">
+        <div class="empty-state" id="emptyState">데이터 로딩 중...</div>
+      </section>
+    </main>
+  </div>
 
   <script src="app.js"></script>
 </body>

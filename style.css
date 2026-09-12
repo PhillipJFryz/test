@@ -4,427 +4,618 @@
   box-sizing: border-box;
 }
 
+/* Every font-size in this file is in rem, so this single value scales the
+   whole UI down uniformly instead of shrinking each rule by hand. */
+html {
+  font-size: 14px;
+}
+
 :root {
-  --bg-primary: #0f1419;
-  --bg-secondary: #1a2332;
-  --bg-card: #1e2a3a;
-  --text-primary: #e7e9ea;
-  --text-secondary: #8b98a5;
-  --accent: #1d9bf0;
-  --accent-hover: #1a8cd8;
-  --positive: #00c087;
-  --negative: #f6465d;
-  --border: #2f3336;
+  /* Paper palette: every surface that used to be flat white is a warm,
+     slightly muted cream instead, to cut screen glare. */
+  --bg: #f2ede0;
+  --surface: #faf7ee;
+  --surface-alt: #eae3d1;
+  --surface-translucent: rgba(250, 247, 238, 0.75);
+  --text: #2c2a22;
+  --text-muted: #6f6a58;
+  --text-faint: #948d78;
+  --accent: #0068d1;
+  --accent-soft: rgba(0, 104, 209, 0.09);
+  --positive: #24793a;
+  --positive-soft: rgba(36, 121, 58, 0.12);
+  --negative: #c62a1f;
+  --negative-soft: rgba(198, 42, 31, 0.1);
+  --warn: #c1720a;
+  --shadow: 0 1px 2px rgba(43, 38, 20, 0.05), 0 10px 30px rgba(43, 38, 20, 0.07);
+  --radius-lg: 22px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+
+  /* A small, fixed spacing scale instead of one-off rem values accumulated
+     turn by turn (0.9rem, then 1.4rem, then +0.6rem on top of that...),
+     which is what made the card's rhythm feel arbitrary. xs = tightly
+     paired elements (a bar and its labels); sm = related rows in a list;
+     lg = separation between distinct sections of a card. */
+  --space-xs: 0.4rem;
+  --space-sm: 0.6rem;
+  --space-lg: 1.25rem;
+
+  /* A translucent dark tint rather than --surface-alt: the range/volume bars
+     used to sit only on the front (--surface) face, so --surface-alt read as
+     a track. Now both bars live on the back face, whose own background *is*
+     --surface-alt - a track in that same color would be invisible. */
+  --track: rgba(44, 42, 34, 0.1);
+
+  /* Apple's "Liquid Glass" material (WWDC/June 2025 redesign): a translucent
+     surface that catches light rather than a flat color fill - a soft
+     diagonal sheen layered over a semi-transparent tint, a bright 1px rim on
+     the side facing the light, and backdrop blur so it reads as glass sitting
+     above the paper background rather than printed on it. */
+  --glass-sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 45%);
+  --glass-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.12));
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --glass-blur: blur(18px) saturate(180%);
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", 'Malgun Gothic', sans-serif;
+  background: var(--bg);
+  color: var(--text);
   min-height: 100vh;
   line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
 }
 
-.header {
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Topbar - Liquid Glass bar, sticky */
+.topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--bg-secondary);
-  padding: 1rem 2rem;
-  border-bottom: 1px solid var(--border);
+  gap: 1rem;
+  padding: 0.85rem 1.5rem;
+  background-image: var(--glass-sheen);
+  background-color: var(--surface-translucent);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.5), 0 1px 12px rgba(43, 38, 20, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
-.header-rate-wrap {
+.brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
 
-.header-rate-block {
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.brand-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.brand-date {
+  font-size: 0.72rem;
+  color: var(--text-faint);
+}
+
+/* Main */
+.main {
+  flex: 1;
+  max-width: 1180px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.control-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+
+.fixed-exchange {
+  padding: 0.38rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  background-image: var(--glass-sheen), var(--glass-fill);
+  background-color: var(--surface-alt);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  box-shadow: var(--glass-rim);
+}
+
+/* iOS-style segmented control: a gray track with a floating white pill
+   behind the active label, rather than a solid color fill. */
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  background: var(--surface-alt);
+  border-radius: 999px;
+  gap: 2px;
+}
+
+.segmented-btn {
+  padding: 0.38rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 590;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.segmented-btn:hover {
+  color: var(--text);
+}
+
+.segmented-btn.is-active {
+  background-image: var(--glass-sheen), var(--glass-fill);
+  background-color: var(--surface);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--text);
+  box-shadow: var(--glass-rim), 0 1px 3px rgba(43, 38, 20, 0.14);
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--text-faint);
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--positive);
+  box-shadow: 0 0 0 0 var(--positive-soft);
+  animation: status-pulse 2s ease-out infinite;
+}
+
+@keyframes status-pulse {
+  0% { box-shadow: 0 0 0 0 var(--positive-soft); }
+  70% { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* Coin grid */
+.coin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  /* Grid items default to align-items: stretch, which would force every
+     card in a row to match the tallest one - exactly the "front page
+     stretched to fit the back" problem, just moved from within a card to
+     across a row of them. Each card must size to its own content. */
+  align-items: start;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 4rem 1rem;
+  color: var(--text-faint);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+}
+
+/* Flip card: .coin-card is just a 3D perspective wrapper (no visible
+   background of its own) - .card-flip rotates, and each .card-face is a
+   fully-styled panel with backface-visibility hidden so only one side ever
+   shows. Clicking anywhere on the card toggles .is-flipped. */
+.coin-card {
+  perspective: 1400px;
+  cursor: pointer;
+}
+
+.coin-card:hover .card-front {
+  box-shadow: var(--glass-rim), 0 1px 2px rgba(43, 38, 20, 0.06), 0 14px 34px rgba(43, 38, 20, 0.11);
+}
+
+/* .card-clip and .card-flip are deliberately two separate elements.
+   overflow: hidden and transform-style: preserve-3d fighting on the SAME
+   element is a real, well-known CSS trap: browsers flatten the 3D context
+   to honor the clip, which silently breaks backface-visibility - the front
+   face's rotated backside (and the back face's own static rotateY) both end
+   up rendered as flat 2D mirror images instead of being hidden/composed in
+   3D. So the height-driven clip lives on the outer .card-clip, and the pure
+   3D rotation lives on the inner .card-flip, with nothing else on either. */
+.card-clip {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  /* Height is set in px by JS (see syncCardHeight in app.js) to whichever
+     face is currently showing - the front's own natural height at rest, not
+     stretched to match the much taller back. Animating this height is what
+     turns the flip into an "unfold" reveal: as it grows toward the back's
+     height, more of its content becomes visible top-to-bottom. */
+  transition: height 0.6s cubic-bezier(0.45, 0.05, 0.15, 1);
+}
+
+.card-flip {
+  position: relative;
+  width: 100%;
+  transition: transform 0.6s cubic-bezier(0.45, 0.05, 0.15, 1);
+  transform-style: preserve-3d;
+}
+
+.coin-card.is-flipped .card-flip {
+  transform: rotateY(180deg);
+}
+
+.card-face {
+  /* Absolutely positioned with only top/left/width set (no height/bottom) -
+     each face keeps its own natural content height regardless of the
+     .card-flip container's current (possibly mid-animation) height. */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  /* Liquid Glass panel: translucent tint + diagonal sheen + backdrop blur,
+     with a bright 1px rim (border + inset highlight) standing in for the
+     light bending along a real glass edge. The border is a real color (not
+     transparent) by default now, so the BSV warning states below only need
+     to swap that color, not add a border that wasn't there. */
+  background-image: var(--glass-sheen), var(--glass-fill);
+  background-color: var(--surface);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: var(--glass-rim), var(--shadow);
+  transition: border-color 0.3s, box-shadow 0.3s;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* Every direct child (head, price rows, sparkline / stats / bars) is
+     spaced by this one gap - a single rule instead of each section owning
+     its own margin, which is what let the spacing drift out of sync as
+     sections were added and moved over time. */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.card-back {
+  background-color: var(--surface-alt);
+  transform: rotateY(180deg);
+}
+
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.coin-id {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.coin-symbol {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.coin-name {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+
+.premium-col {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 0.25rem;
 }
 
-.header-date {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
+.premium-trend {
+  font-size: 0.68rem;
+  color: var(--text-faint);
 }
 
-.header-rate {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-}
+.premium-trend.positive { color: var(--positive); }
+.premium-trend.negative { color: var(--negative); }
 
-.header-rate-percent {
-  color: var(--negative);
-}
-
-.header-rate-edit {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: color 0.2s, background 0.2s;
-}
-
-.header-rate-edit:hover {
-  color: var(--accent);
-  background: rgba(29, 155, 240, 0.1);
-}
-
-/* Modal */
-.modal-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-overlay.is-open {
-  display: flex;
-}
-
-.modal-content {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1.5rem;
-  min-width: 320px;
-}
-
-.modal-title {
-  font-size: 1.25rem;
-  margin-bottom: 0.5rem;
-}
-
-.modal-desc {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  margin-bottom: 1.25rem;
-}
-
-.modal-form label {
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 0.5rem;
-}
-
-.modal-input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-primary);
-  margin-bottom: 1.25rem;
-}
-
-.modal-input:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-.modal-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-}
-
-.modal-btn {
-  padding: 0.5rem 1.25rem;
-  font-size: 0.9rem;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.modal-btn-cancel {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-}
-
-.modal-btn-cancel:hover {
-  background: var(--bg-secondary);
-}
-
-.modal-btn-save {
-  background: var(--accent);
-  border: none;
-  color: #fff;
-}
-
-.modal-btn-save:hover {
-  background: var(--accent-hover);
-}
-
-.logo-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.logo {
-  font-size: 1.5rem;
+.premium-badge {
+  /* Sized up from the coin symbol next to it - the premium percentage is
+     the one number this whole app exists to show, so it should read as the
+     clear focal point of the card, not one of several same-weight numbers. */
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  font-size: 1.05rem;
   font-weight: 700;
+  white-space: nowrap;
+  background-image: var(--glass-sheen);
+  box-shadow: var(--glass-rim);
 }
 
-.header-today-date {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
+.premium-badge.premium-positive {
+  color: var(--positive);
+  background-color: var(--positive-soft);
 }
 
-.subtitle {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  margin-left: 0.5rem;
+.premium-badge.premium-negative {
+  color: var(--negative);
+  background-color: var(--negative-soft);
 }
 
-.main {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
+.premium-badge.premium-neutral {
+  color: var(--text-faint);
+  background-color: var(--surface-alt);
 }
 
-.exchange-selector {
-  display: flex;
-  gap: 2rem;
-  margin-bottom: 2rem;
-  padding: 1.5rem;
-  background: var(--bg-card);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-}
-
-.selector-group {
+.price-rows {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  flex: 1;
-  max-width: 280px;
+  gap: var(--space-sm);
 }
 
-.selector-group label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.select {
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-
-.select:hover {
-  border-color: var(--accent);
-}
-
-.select:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-.coin-list-section {
-  background: var(--bg-card);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  overflow: hidden;
-}
-
-.list-header {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.notice {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-}
-
-.coin-list-container {
-  overflow-x: auto;
-}
-
-.coin-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.coin-table th,
-.coin-table td {
-  padding: 1rem 1.5rem;
-  text-align: left;
-}
-
-.coin-table th {
-  background: var(--bg-secondary);
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.coin-table tbody tr {
-  border-bottom: 1px solid var(--border);
-  transition: background 0.15s;
-}
-
-.coin-table tbody tr:hover {
-  background: rgba(29, 155, 240, 0.05);
-}
-
-.coin-table tbody tr:last-child {
-  border-bottom: none;
-}
-
-.coin-table .empty-state td {
-  text-align: center;
-  padding: 3rem;
-  color: var(--text-secondary);
-}
-
-.coin-name {
+.price-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
-.coin-symbol {
+.price-row-label {
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  font-weight: 600;
+  flex-shrink: 0;
+  max-width: 6.5rem;
+}
+
+.price-row-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  text-align: right;
+}
+
+.price-main {
+  font-size: 0.98rem;
   font-weight: 600;
 }
 
-/* BSV 비율 5% 이상: 주황색 */
-.coin-symbol.bsv-warn {
-  color: #ff8c00;
+.price-sub {
+  font-size: 0.75rem;
+  color: var(--text-faint);
 }
 
-/* BSV 비율 10% 이상: 빨간색 */
-.coin-symbol.bsv-high {
-  color: #f6465d;
+.price-sub.positive { color: var(--positive); }
+.price-sub.negative { color: var(--negative); }
+
+.price-row-value.unavailable .price-main {
+  color: var(--text-faint);
+  font-weight: 500;
+  font-size: 0.85rem;
 }
 
-/* BSV 비율 20% 이상: 빨간색 + 깜빡임 */
-.coin-symbol.bsv-urgent {
-  color: #f6465d;
+.volume-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.volume-bar {
+  display: flex;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--track);
+}
+
+.volume-bar-fill {
+  height: 100%;
+}
+
+.volume-bar-fill.domestic {
+  background: var(--accent);
+}
+
+.volume-bar-fill.comparison {
+  background: var(--text-faint);
+}
+
+.volume-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+}
+
+.volume-labels strong {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* 24h range: a slim bar with a dot marking where today's price sits between
+   the 24h low and high, instead of spelling that out in three numbers. */
+.range-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.range-bar {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--track);
+}
+
+.range-marker {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translate(-50%, -50%);
+}
+
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--text-faint);
+}
+
+/* BSV warning states */
+.coin-card.bsv-warn .card-face {
+  border-color: var(--warn);
+}
+
+.coin-card.bsv-high .card-face {
+  border-color: var(--negative);
+  box-shadow: 0 0 0 1px var(--negative), var(--shadow);
+}
+
+.coin-card.bsv-urgent .card-face {
+  border-color: var(--negative);
+  box-shadow: 0 0 0 1px var(--negative), var(--shadow);
   animation: bsv-blink 1s ease-in-out infinite;
 }
 
 @keyframes bsv-blink {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50% { opacity: 0.55; }
 }
 
-.coin-premium {
-  font-size: 0.8em;
-  margin-top: 0.2rem;
+/* Flash on update */
+@keyframes card-flash {
+  0% { background-color: var(--accent-soft); }
+  100% { background-color: var(--surface); }
 }
 
-.upbit-price {
-  font-weight: 500;
+.coin-card.card-flash .card-front {
+  animation: card-flash 0.6s ease-out;
 }
 
-.upbit-change-rate {
-  font-size: 0.8em;
-  margin-top: 0.2rem;
+/* Card back: key indicators (market cap, supply, 52-week range) */
+.stat-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
 }
 
-.gate-price-krw {
-  font-weight: 500;
+.stat-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
-.gate-price-usd {
-  font-size: 0.8em;
-  margin-top: 0.2rem;
-  color: var(--text-secondary);
-}
-
-.trade-volume-upbit {
-  font-weight: 500;
-}
-
-.trade-volume-gate {
-  font-size: 0.8em;
-  margin-top: 0.2rem;
-  color: var(--text-secondary);
-}
-
-.trade-diff {
-  font-size: 0.8em;
-  margin-top: 0.2rem;
-}
-
-.coin-full-name {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-}
-
-.premium-positive {
-  color: var(--positive);
+.stat-label {
+  font-size: 0.78rem;
+  color: var(--text-faint);
   font-weight: 600;
 }
 
-.premium-negative {
-  color: var(--negative);
+.stat-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+.stat-value-sub {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-faint);
+}
+
+.sparkline-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.sparkline {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  /* Deliberately not color-coded by direction - see the comment in
+     buildCardData in app.js. */
+  color: var(--text-faint);
+}
+
+.sparkline-change {
+  flex-shrink: 0;
+  font-size: 0.78rem;
   font-weight: 600;
 }
 
-@keyframes cell-flash {
-  0% { background: rgba(29, 155, 240, 0.3); }
-  100% { background: transparent; }
-}
+.sparkline-change.positive { color: var(--positive); }
+.sparkline-change.negative { color: var(--negative); }
 
-.cell-coin.cell-flash,
-.cell-upbit.cell-flash,
-.cell-gate.cell-flash,
-.cell-trade-volume.cell-flash {
-  animation: cell-flash 0.6s ease-out;
-}
-
-.footer {
-  margin-top: 3rem;
-  padding: 1.5rem 2rem;
-  text-align: center;
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  border-top: 1px solid var(--border);
-}
-
-@media (max-width: 768px) {
-  .exchange-selector {
-    flex-direction: column;
-  }
-
-  .selector-group {
-    max-width: none;
+@media (max-width: 560px) {
+  .topbar {
+    padding: 0.75rem 1rem;
   }
 
   .main {
     padding: 1rem;
   }
 
-  .coin-table th,
-  .coin-table td {
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
+  .controls {
+    gap: 0.75rem 1rem;
+  }
+
+  .status-indicator {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .coin-grid {
+    grid-template-columns: 1fr;
   }
 }

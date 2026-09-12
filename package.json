@@ -4,8 +4,5 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
-  },
-  "dependencies": {
-    "iconv-lite": "^0.6.3"
   }
 }
