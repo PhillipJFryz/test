@@ -436,14 +436,14 @@ function padLeft(str, width) {
 }
 
 // Raw digits / signed % look like Unix file sizes; no "원"/"억" suffixes.
-// BTC alone uses 억 units to 2 decimals (4 chars, e.g. 1.33) so mobile rows fit.
-// Upbit rows append compact 24h change (e.g. 1.33+2.5%) — width 12 keeps columns aligned.
+// BTC/BCH use 억 units to 2 decimals (e.g. 1.33) so mobile size column stays short.
+// Upbit 24h % lives on its own `chg` row under `upbit` (not glued to price).
 const LS_SIZE_WIDTH = 12;
 
 function formatLsPriceSize(value, symbol) {
   if (value == null || !Number.isFinite(Number(value))) return '-';
   const n = Number(value);
-  if (symbol === 'BTC') return (n / 1e8).toFixed(2);
+  if (symbol === 'BTC' || symbol === 'BCH') return (n / 1e8).toFixed(2);
   return String(Math.round(n));
 }
 
@@ -453,13 +453,10 @@ function formatLsPremiumSize(premium) {
   return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
 }
 
-// Upbit file size = price + 24h change (1 decimal) so it still reads as one size cell.
-function formatLsUpbitSize(price, symbol, changeRate) {
-  const priceStr = formatLsPriceSize(price, symbol);
-  if (changeRate == null || !Number.isFinite(Number(changeRate))) return priceStr;
+function formatLsChangeSize(changeRate) {
+  if (changeRate == null || !Number.isFinite(Number(changeRate))) return '-';
   const n = Number(changeRate) * 100;
-  const chg = `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
-  return `${priceStr}${chg}`;
+  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
 }
 
 function setupTerminalPrompt() {
@@ -502,11 +499,11 @@ function lsRowHTML({ mode, nlink, name, sizeKey, tone, group }) {
 
 function ensureTerminalLsShell(el, coins) {
   const cmp = state.comparison;
-  const shellKey = `v6|${cmp}|${(coins || []).map(c => c.symbol).join(',')}`;
+  const shellKey = `v7|${cmp}|${(coins || []).map(c => c.symbol).join(',')}`;
   if (el.dataset.shell === shellKey) return;
 
   const dirCount = (coins && coins.length) || 0;
-  const fileRowsPerCoin = 5;
+  const fileRowsPerCoin = 6;
   const totalBlocks = 2 + dirCount * (1 + fileRowsPerCoin);
 
   const parts = [
@@ -519,12 +516,14 @@ function ensureTerminalLsShell(el, coins) {
   (coins || []).forEach(coin => {
     const dir = coin.symbol.toLowerCase();
     // Group column = coin id; filenames drop the coin prefix (kimp not bsv/kimp).
+    // upbit = price only; chg = 24h % on the next row.
     parts.push(
       `<span class="ls-coin" data-symbol="${coin.symbol}">` +
       [
         lsRowHTML({ mode: 'drwxr-xr-x', nlink: 2 + fileRowsPerCoin, name: dir, sizeKey: 'dir', group: dir }),
         lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'kimp', sizeKey: 'kimp', tone: 'kimp', group: dir }),
         lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'upbit', sizeKey: 'upbit', group: dir }),
+        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'chg', sizeKey: 'chg', tone: 'chg', group: dir }),
         lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: cmp, sizeKey: 'cmp', group: dir }),
         lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'low', sizeKey: 'low', group: dir }),
         lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'high', sizeKey: 'high', group: dir })
@@ -572,7 +571,17 @@ function patchLsCoinBlock(block, coin, d, stamp) {
   patchLsRow(kimpRow, kimpSize, stamp, true);
 
   const sym = coin.symbol;
-  patchLsRow(q('upbit'), formatLsUpbitSize(coin.basePrice, sym, coin.baseChangeRate), stamp, true);
+  patchLsRow(q('upbit'), formatLsPriceSize(coin.basePrice, sym), stamp, true);
+
+  const chgRow = q('chg');
+  const chgTone =
+    coin.baseChangeRate == null ? ''
+      : coin.baseChangeRate >= 0 ? 'positive'
+        : 'negative';
+  if (chgRow) {
+    setClass(chgRow, `ls-row ls-tone-chg${chgTone ? ` ls-${chgTone}` : ''}`);
+  }
+  patchLsRow(chgRow, formatLsChangeSize(coin.baseChangeRate), stamp, true);
 
   const cmpSize = coin.comparisonPriceKRW != null
     ? formatLsPriceSize(coin.comparisonPriceKRW, sym)

@@ -769,6 +769,8 @@ body {
   --term-sym: #e8e8e8;
   --term-label: #7a7a7a;
   --term-fs: 0.56rem;
+  /* Same L/R gutter as the bottom input window — keep ls / cmdline / bar flush. */
+  --term-pad-x: 0.3cm;
   --radius-lg: 0;
   --radius-md: 0;
   --radius-sm: 0;
@@ -794,10 +796,10 @@ body {
   --term-fs: 0.56rem;
 }
 
-/* Terminal rem base — one step smaller for mobile margin fit. */
+/* Terminal rem base — 21px for mobile readability. */
 html[data-theme="terminal"],
 html[data-theme="terminal-color"] {
-  font-size: 20px;
+  font-size: 21px;
 }
 
 [data-theme="terminal"] body,
@@ -809,7 +811,7 @@ html[data-theme="terminal-color"] {
 
 [data-theme="terminal"] .topbar,
 [data-theme="terminal-color"] .topbar {
-  padding: 0.55rem 0.85rem;
+  padding: 0.55rem max(var(--term-pad-x), env(safe-area-inset-right, 0px)) 0.55rem max(var(--term-pad-x), env(safe-area-inset-left, 0px));
   background: transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -844,7 +846,11 @@ html[data-theme="terminal-color"] {
 [data-theme="terminal"] .main,
 [data-theme="terminal-color"] .main {
   max-width: 42rem;
-  padding: 0.4rem 0.7rem 2rem;
+  /* +1cm top; L/R match bottom prompt window (--term-pad-x) */
+  padding-top: calc(0.4rem + 1cm);
+  padding-right: max(var(--term-pad-x), env(safe-area-inset-right, 0px));
+  padding-bottom: 2rem;
+  padding-left: max(var(--term-pad-x), env(safe-area-inset-left, 0px));
 }
 
 /* Terminal: hide all top exchange chrome — switch via "$ ls -al" tap. */
@@ -927,7 +933,7 @@ html[data-theme="terminal-color"] {
   flex-direction: column;
   gap: 0.4rem;
   min-height: 0;
-  padding-bottom: 4.25rem;
+  padding-bottom: 5.5rem;
 }
 
 [data-theme="terminal"] .terminal-shell,
@@ -1039,9 +1045,32 @@ html[data-theme="terminal-color"] {
   right: 0;
   bottom: 0;
   z-index: 20;
-  padding: 0.55rem 0.75rem calc(0.55rem + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.55rem;
+  padding-right: max(var(--term-pad-x), env(safe-area-inset-right, 0px));
+  padding-bottom: calc(0.55rem + env(safe-area-inset-bottom, 0px));
+  padding-left: max(var(--term-pad-x), env(safe-area-inset-left, 0px));
   background: linear-gradient(180deg, transparent 0%, #000 28%);
   pointer-events: none;
+}
+
+/* Camouflage shell line above the fake chat input — same L edge as ls + bar */
+.terminal-cmdline {
+  max-width: 42rem;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  color: var(--term-time);
+  font-size: var(--term-fs);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  user-select: none;
 }
 
 .terminal-prompt-bar {
@@ -1121,12 +1150,15 @@ html[data-theme="terminal-color"] {
 @media (max-width: 560px) {
   html[data-theme="terminal"],
   html[data-theme="terminal-color"] {
-    font-size: 18px;
+    font-size: 21px;
   }
 
   [data-theme="terminal"] .main,
   [data-theme="terminal-color"] .main {
-    padding: 0.35rem 0.55rem 1.75rem;
+    padding-top: calc(0.35rem + 1cm);
+    padding-right: max(var(--term-pad-x), env(safe-area-inset-right, 0px));
+    padding-bottom: 1.75rem;
+    padding-left: max(var(--term-pad-x), env(safe-area-inset-left, 0px));
   }
 
   [data-theme="terminal"] .brand-name,
@@ -1149,7 +1181,12 @@ html[data-theme="terminal-color"] {
   }
 
   .terminal-shell {
-    padding-bottom: 4.5rem;
+    padding-bottom: 5.75rem;
+  }
+
+  .terminal-prompt {
+    padding-right: max(var(--term-pad-x), env(safe-area-inset-right, 0px));
+    padding-left: max(var(--term-pad-x), env(safe-area-inset-left, 0px));
   }
 
   .terminal-ls {
