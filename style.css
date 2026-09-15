@@ -802,20 +802,42 @@ html[data-theme="terminal-color"] {
   font-size: 20px;
 }
 
+/* Terminal viewport lock: opaque chrome + no sideways rubber-band.
+   Transparency under sticky/fixed layers is what made list text bleed
+   through the header/footer while scrolling. */
+html[data-theme="terminal"],
+html[data-theme="terminal-color"] {
+  overflow-x: hidden;
+  overscroll-behavior: none;
+  background: #000;
+}
+
 [data-theme="terminal"] body,
 [data-theme="terminal-color"] body {
   font-family: ui-monospace, "SF Mono", "Cascadia Mono", "Consolas", "Malgun Gothic", monospace;
   letter-spacing: 0.01em;
   -webkit-font-smoothing: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  background: #000;
+  touch-action: pan-y;
+}
+
+[data-theme="terminal"] .app,
+[data-theme="terminal-color"] .app {
+  overflow-x: hidden;
+  max-width: 100vw;
+  background: #000;
 }
 
 [data-theme="terminal"] .topbar,
 [data-theme="terminal-color"] .topbar {
   padding: 0.55rem max(var(--term-pad-x), env(safe-area-inset-right, 0px)) 0.55rem max(var(--term-pad-x), env(safe-area-inset-left, 0px));
-  background: transparent;
+  /* Solid mask — sticky top must fully cover scrolling ls rows */
+  background: #000;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  box-shadow: var(--topbar-edge);
+  box-shadow: none;
 }
 
 [data-theme="terminal"] .brand-name,
@@ -845,12 +867,15 @@ html[data-theme="terminal-color"] {
 
 [data-theme="terminal"] .main,
 [data-theme="terminal-color"] .main {
-  max-width: 42rem;
-  /* L/R match bottom prompt window (--term-pad-x); top flush after -1cm */
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  /* L/R match bottom cmdline (--term-pad-x); room under fixed prompt */
   padding-top: 0.4rem;
   padding-right: max(var(--term-pad-x), env(safe-area-inset-right, 0px));
-  padding-bottom: 2rem;
+  padding-bottom: 3.2rem;
   padding-left: max(var(--term-pad-x), env(safe-area-inset-left, 0px));
+  overflow-x: hidden;
 }
 
 /* Terminal: hide all top exchange chrome — switch via "$ ls -al" tap. */
@@ -957,8 +982,10 @@ html[data-theme="terminal-color"] {
   letter-spacing: 0;
   font-weight: 400;
   white-space: pre;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  /* Clip wide rows — never open a horizontal scroll frame on phone */
+  overflow-x: hidden;
+  max-width: 100%;
+  touch-action: pan-y;
 }
 
 .terminal-ls .ls-cmd {
@@ -1052,7 +1079,8 @@ html[data-theme="terminal-color"] {
   padding-right: max(var(--term-pad-x), env(safe-area-inset-right, 0px));
   padding-bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px));
   padding-left: max(var(--term-pad-x), env(safe-area-inset-left, 0px));
-  background: linear-gradient(180deg, transparent 0%, #000 40%);
+  /* Opaque footer mask — gradient transparency let ls rows bleed through */
+  background: #000;
   pointer-events: none;
 }
 
@@ -1082,7 +1110,7 @@ html[data-theme="terminal-color"] {
   [data-theme="terminal-color"] .main {
     padding-top: 0.35rem;
     padding-right: max(var(--term-pad-x), env(safe-area-inset-right, 0px));
-    padding-bottom: 1.25rem;
+    padding-bottom: 3rem;
     padding-left: max(var(--term-pad-x), env(safe-area-inset-left, 0px));
   }
 
