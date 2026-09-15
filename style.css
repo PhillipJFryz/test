@@ -768,7 +768,7 @@ body {
   --term-time: #6e6e6e;
   --term-sym: #e8e8e8;
   --term-label: #7a7a7a;
-  --term-fs: 0.62rem;
+  --term-fs: 0.56rem;
   --radius-lg: 0;
   --radius-md: 0;
   --radius-sm: 0;
@@ -791,14 +791,13 @@ body {
   --term-sym: #e6e6e6;
   --term-label: #8b949e;
   --glass-border: rgba(125, 211, 160, 0.22);
-  --term-fs: 0.62rem;
+  --term-fs: 0.56rem;
 }
 
-/* ~2× previous terminal rem base (was 12px / 11.5px mobile) so log
-   lines read like a phone Render console, not micro-print. */
+/* Terminal rem base — one step smaller for mobile margin fit. */
 html[data-theme="terminal"],
 html[data-theme="terminal-color"] {
-  font-size: 22px;
+  font-size: 20px;
 }
 
 [data-theme="terminal"] body,
@@ -845,15 +844,25 @@ html[data-theme="terminal-color"] {
 [data-theme="terminal"] .main,
 [data-theme="terminal-color"] .main {
   max-width: 42rem;
-  padding: 0.75rem 0.85rem 2rem;
+  padding: 0.4rem 0.7rem 2rem;
 }
 
+/* Terminal: hide all top exchange chrome — switch via "$ ls -al" tap. */
 [data-theme="terminal"] .controls,
 [data-theme="terminal-color"] .controls {
-  gap: 0.45rem 0.75rem;
-  margin-bottom: 0.85rem;
-  padding-bottom: 0.65rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: none !important;
+}
+
+/* Terminal: no "기준 거래소" row — Upbit is implied. */
+[data-theme="terminal"] .control-base,
+[data-theme="terminal-color"] .control-base {
+  display: none !important;
+}
+
+/* Terminal: exchange chips only — drop "비교 거래소" label. */
+[data-theme="terminal"] .control-compare .control-label,
+[data-theme="terminal-color"] .control-compare .control-label {
+  display: none !important;
 }
 
 [data-theme="terminal"] .control-label,
@@ -916,7 +925,7 @@ html[data-theme="terminal-color"] {
 .terminal-shell {
   display: none;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.4rem;
   min-height: 0;
   padding-bottom: 4.25rem;
 }
@@ -938,7 +947,7 @@ html[data-theme="terminal-color"] {
   color: var(--text-muted);
   font: inherit;
   font-size: var(--term-fs);
-  line-height: 1.42;
+  line-height: 1.18;
   letter-spacing: 0;
   font-weight: 400;
   white-space: pre;
@@ -948,6 +957,13 @@ html[data-theme="terminal-color"] {
 
 .terminal-ls .ls-cmd {
   color: var(--term-sym);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.terminal-ls .ls-cmd:active {
+  opacity: 0.65;
 }
 
 .terminal-ls .ls-meta {
@@ -988,6 +1004,8 @@ html[data-theme="terminal-color"] {
 
 .terminal-ls .ls-coin {
   display: block;
+  margin: 0;
+  padding: 0;
 }
 
 .terminal-ls .ls-empty {
@@ -1103,12 +1121,12 @@ html[data-theme="terminal-color"] {
 @media (max-width: 560px) {
   html[data-theme="terminal"],
   html[data-theme="terminal-color"] {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   [data-theme="terminal"] .main,
   [data-theme="terminal-color"] .main {
-    padding: 0.7rem 0.85rem 1.75rem;
+    padding: 0.35rem 0.55rem 1.75rem;
   }
 
   [data-theme="terminal"] .brand-name,
@@ -1136,6 +1154,7 @@ html[data-theme="terminal-color"] {
 
   .terminal-ls {
     font-size: var(--term-fs);
+    line-height: 1.15;
   }
 
   .terminal-prompt-bar {

@@ -436,17 +436,30 @@ function padLeft(str, width) {
 }
 
 // Raw digits / signed % look like Unix file sizes; no "원"/"억" suffixes.
-const LS_SIZE_WIDTH = 10;
+// BTC alone uses 억 units to 2 decimals (4 chars, e.g. 1.33) so mobile rows fit.
+// Upbit rows append compact 24h change (e.g. 1.33+2.5%) — width 12 keeps columns aligned.
+const LS_SIZE_WIDTH = 12;
 
-function formatLsPriceSize(value) {
+function formatLsPriceSize(value, symbol) {
   if (value == null || !Number.isFinite(Number(value))) return '-';
-  return String(Math.round(Number(value)));
+  const n = Number(value);
+  if (symbol === 'BTC') return (n / 1e8).toFixed(2);
+  return String(Math.round(n));
 }
 
 function formatLsPremiumSize(premium) {
   if (premium == null || !Number.isFinite(Number(premium))) return '-';
   const n = Number(premium);
   return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
+}
+
+// Upbit file size = price + 24h change (1 decimal) so it still reads as one size cell.
+function formatLsUpbitSize(price, symbol, changeRate) {
+  const priceStr = formatLsPriceSize(price, symbol);
+  if (changeRate == null || !Number.isFinite(Number(changeRate))) return priceStr;
+  const n = Number(changeRate) * 100;
+  const chg = `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
+  return `${priceStr}${chg}`;
 }
 
 function setupTerminalPrompt() {
@@ -464,7 +477,13 @@ function setupTerminalPrompt() {
   bar.addEventListener('click', blockKeyboard);
 }
 
-function lsRowHTML({ mode, nlink, name, sizeKey, tone }) {
+function lsOwnerHTML(group) {
+  // Fixed-width owner/group: " user  bsv " — group is coin id (or "coin" for . / ..).
+  const g = String(group || 'coin').toLowerCase().padEnd(4, ' ').slice(0, 4);
+  return `<span class="ls-owner"> user  ${g}</span>`;
+}
+
+function lsRowHTML({ mode, nlink, name, sizeKey, tone, group }) {
   const rowClass = ['ls-row'];
   if (mode.startsWith('d')) rowClass.push('ls-dir');
   if (tone) rowClass.push(`ls-tone-${tone}`);
@@ -473,7 +492,7 @@ function lsRowHTML({ mode, nlink, name, sizeKey, tone }) {
     `<span class="${rowClass.join(' ')}"${keyAttr}>` +
     `<span class="ls-perm">${mode}  </span>` +
     `<span class="ls-nlink">${padLeft(nlink, 2)}</span>` +
-    `<span class="ls-owner"> user  coin </span>` +
+    lsOwnerHTML(group) +
     `<span class="ls-size" data-ls="size"></span>` +
     `<span class="ls-date" data-ls="date"></span>` +
     `<span class="ls-name">${name}</span>` +
@@ -483,35 +502,34 @@ function lsRowHTML({ mode, nlink, name, sizeKey, tone }) {
 
 function ensureTerminalLsShell(el, coins) {
   const cmp = state.comparison;
-  const shellKey = `v3|${cmp}|${(coins || []).map(c => c.symbol).join(',')}`;
+  const shellKey = `v6|${cmp}|${(coins || []).map(c => c.symbol).join(',')}`;
   if (el.dataset.shell === shellKey) return;
 
   const dirCount = (coins && coins.length) || 0;
   const fileRowsPerCoin = 5;
-  const totalBlocks = 4 + dirCount * (1 + fileRowsPerCoin);
+  const totalBlocks = 2 + dirCount * (1 + fileRowsPerCoin);
 
   const parts = [
-    `<span class="ls-cmd">$ ls -al</span>`,
+    `<span class="ls-cmd" role="button" tabindex="0" title="비교 거래소 전환" aria-label="비교 거래소 전환">$ ls -al</span>`,
     `<span class="ls-meta" data-ls="total">total ${totalBlocks * 4}</span>`,
-    lsRowHTML({ mode: 'drwxr-xr-x', nlink: 2 + dirCount, name: '.', sizeKey: 'rootDot' }),
-    lsRowHTML({ mode: 'drwxr-xr-x', nlink: 3, name: '..', sizeKey: 'rootDotDot' }),
-    lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'upbit.cfg', sizeKey: 'cfgUpbit' }),
-    lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: `${cmp}.cfg`, sizeKey: 'cfgCmp' })
+    lsRowHTML({ mode: 'drwxr-xr-x', nlink: 2 + dirCount, name: '.', sizeKey: 'rootDot', group: 'coin' }),
+    lsRowHTML({ mode: 'drwxr-xr-x', nlink: 3, name: '..', sizeKey: 'rootDotDot', group: 'coin' })
   ];
 
   (coins || []).forEach(coin => {
     const dir = coin.symbol.toLowerCase();
+    // Group column = coin id; filenames drop the coin prefix (kimp not bsv/kimp).
     parts.push(
-      `<span class="ls-coin" data-symbol="${coin.symbol}">\n` +
+      `<span class="ls-coin" data-symbol="${coin.symbol}">` +
       [
-        lsRowHTML({ mode: 'drwxr-xr-x', nlink: 2 + fileRowsPerCoin, name: dir, sizeKey: 'dir' }),
-        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: `${dir}/kimp`, sizeKey: 'kimp', tone: 'kimp' }),
-        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: `${dir}/upbit`, sizeKey: 'upbit' }),
-        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: `${dir}/${cmp}`, sizeKey: 'cmp' }),
-        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: `${dir}/low`, sizeKey: 'low' }),
-        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: `${dir}/high`, sizeKey: 'high' })
+        lsRowHTML({ mode: 'drwxr-xr-x', nlink: 2 + fileRowsPerCoin, name: dir, sizeKey: 'dir', group: dir }),
+        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'kimp', sizeKey: 'kimp', tone: 'kimp', group: dir }),
+        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'upbit', sizeKey: 'upbit', group: dir }),
+        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: cmp, sizeKey: 'cmp', group: dir }),
+        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'low', sizeKey: 'low', group: dir }),
+        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'high', sizeKey: 'high', group: dir })
       ].join('\n') +
-      `\n</span>`
+      `</span>`
     );
   });
 
@@ -522,12 +540,9 @@ function ensureTerminalLsShell(el, coins) {
   el.innerHTML = parts.join('\n');
   el.dataset.shell = shellKey;
 
-  // Static camouflage sizes for . / .. / *.cfg
   const stamp = formatLsStamp();
   patchLsRow(el.querySelector('[data-f="rootDot"]'), '4096', stamp, false);
   patchLsRow(el.querySelector('[data-f="rootDotDot"]'), '4096', stamp, false);
-  patchLsRow(el.querySelector('[data-f="cfgUpbit"]'), '128', stamp, false);
-  patchLsRow(el.querySelector('[data-f="cfgCmp"]'), '96', stamp, false);
 }
 
 function patchLsRow(row, sizeText, stamp, flash) {
@@ -556,15 +571,16 @@ function patchLsCoinBlock(block, coin, d, stamp) {
   }
   patchLsRow(kimpRow, kimpSize, stamp, true);
 
-  patchLsRow(q('upbit'), formatLsPriceSize(coin.basePrice), stamp, true);
+  const sym = coin.symbol;
+  patchLsRow(q('upbit'), formatLsUpbitSize(coin.basePrice, sym, coin.baseChangeRate), stamp, true);
 
   const cmpSize = coin.comparisonPriceKRW != null
-    ? formatLsPriceSize(coin.comparisonPriceKRW)
-    : (coin.comparisonPrice != null ? formatLsPriceSize(coin.comparisonPrice) : '-');
+    ? formatLsPriceSize(coin.comparisonPriceKRW, sym)
+    : (coin.comparisonPrice != null ? formatLsPriceSize(coin.comparisonPrice, sym) : '-');
   patchLsRow(q('cmp'), cmpSize, stamp, true);
 
-  patchLsRow(q('low'), formatLsPriceSize(coin.low24h), stamp, true);
-  patchLsRow(q('high'), formatLsPriceSize(coin.high24h), stamp, true);
+  patchLsRow(q('low'), formatLsPriceSize(coin.low24h, sym), stamp, true);
+  patchLsRow(q('high'), formatLsPriceSize(coin.high24h, sym), stamp, true);
 }
 
 function renderTerminalLog(coins, isLoading) {
@@ -592,8 +608,6 @@ function renderTerminalLog(coins, isLoading) {
   // Refresh camouflage timestamps so the listing feels live.
   patchLsRow(el.querySelector('[data-f="rootDot"]'), '4096', stamp, false);
   patchLsRow(el.querySelector('[data-f="rootDotDot"]'), '4096', stamp, false);
-  patchLsRow(el.querySelector('[data-f="cfgUpbit"]'), '128', stamp, false);
-  patchLsRow(el.querySelector('[data-f="cfgCmp"]'), '96', stamp, false);
 
   coins.forEach(coin => {
     keep.add(coin.symbol);
@@ -782,17 +796,62 @@ function setupCardFlip() {
   });
 }
 
+const COMPARISON_ORDER = ['gate', 'binance', 'bithumb'];
+
+function syncComparisonSegmented() {
+  const container = document.getElementById('comparisonSegmented');
+  if (!container) return;
+  container.querySelectorAll('.segmented-btn').forEach(b => {
+    const on = b.dataset.value === state.comparison;
+    b.classList.toggle('is-active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+}
+
+function setComparison(value) {
+  if (!COMPARISON_ORDER.includes(value) || state.comparison === value) return;
+  state.comparison = value;
+  syncComparisonSegmented();
+  refresh(true);
+}
+
+function cycleComparison() {
+  const idx = COMPARISON_ORDER.indexOf(state.comparison);
+  const next = COMPARISON_ORDER[(idx < 0 ? 0 : idx + 1) % COMPARISON_ORDER.length];
+  setComparison(next);
+}
+
 function setupSegmented(containerId, group) {
   const container = document.getElementById(containerId);
   container.addEventListener('click', (e) => {
     const btn = e.target.closest('.segmented-btn');
     if (!btn || btn.classList.contains('is-active')) return;
-    container.querySelectorAll('.segmented-btn').forEach(b => {
-      b.classList.toggle('is-active', b === btn);
-      b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
-    });
-    state[group] = btn.dataset.value;
-    refresh(true);
+    if (group === 'comparison') setComparison(btn.dataset.value);
+    else {
+      container.querySelectorAll('.segmented-btn').forEach(b => {
+        b.classList.toggle('is-active', b === btn);
+        b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+      });
+      state[group] = btn.dataset.value;
+      refresh(true);
+    }
+  });
+}
+
+function setupTerminalLsExchangeCycle() {
+  const el = document.getElementById('terminalLs');
+  if (!el || el.dataset.cmpCycleBound) return;
+  el.dataset.cmpCycleBound = '1';
+  el.addEventListener('click', (e) => {
+    if (!e.target.closest('.ls-cmd')) return;
+    e.preventDefault();
+    cycleComparison();
+  });
+  el.addEventListener('keydown', (e) => {
+    if (!e.target.closest('.ls-cmd')) return;
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    cycleComparison();
   });
 }
 
@@ -860,6 +919,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupCardFlip();
   setupSegmented('comparisonSegmented', 'comparison');
   setupTerminalPrompt();
+  setupTerminalLsExchangeCycle();
 
   refresh(true);
   setInterval(() => refresh(false), REFRESH_INTERVAL);
