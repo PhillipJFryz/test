@@ -299,6 +299,14 @@ function getPremiumChange1h(key) {
 }
 
 const server = http.createServer(async (req, res) => {
+  const reqPath = (() => {
+    try {
+      return new URL(req.url, `http://${req.headers.host || 'localhost'}`).pathname;
+    } catch {
+      return String(req.url || '/').split('?')[0];
+    }
+  })();
+
   if (req.url.startsWith('/api/prices') && req.method === 'GET') {
     try {
       const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
@@ -393,7 +401,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.url === '/' || req.url === '/index.html') {
+  if (reqPath === '/' || reqPath === '/index.html') {
     const filePath = path.join(__dirname, 'index.html');
     fs.readFile(filePath, (err, data) => {
       if (err) {
@@ -407,7 +415,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.url === '/style.css') {
+  if (reqPath === '/style.css') {
     const filePath = path.join(__dirname, 'style.css');
     fs.readFile(filePath, (err, data) => {
       if (err) {
@@ -415,13 +423,16 @@ const server = http.createServer(async (req, res) => {
         res.end();
         return;
       }
-      res.writeHead(200, { 'Content-Type': 'text/css' });
+      res.writeHead(200, {
+        'Content-Type': 'text/css',
+        'Cache-Control': 'no-cache'
+      });
       res.end(data);
     });
     return;
   }
 
-  if (req.url === '/app.js') {
+  if (reqPath === '/app.js') {
     const filePath = path.join(__dirname, 'app.js');
     fs.readFile(filePath, (err, data) => {
       if (err) {
@@ -429,7 +440,10 @@ const server = http.createServer(async (req, res) => {
         res.end();
         return;
       }
-      res.writeHead(200, { 'Content-Type': 'application/javascript' });
+      res.writeHead(200, {
+        'Content-Type': 'application/javascript',
+        'Cache-Control': 'no-cache'
+      });
       res.end(data);
     });
     return;

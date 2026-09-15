@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>코인프리미엄 · 거래소 시세 비교</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=term-no-live-1">
   <script>
     (function () {
       try {
@@ -74,10 +74,7 @@
       </section>
 
       <section class="terminal-shell" id="terminalShell" hidden>
-        <pre class="terminal-ls" id="terminalLs" aria-label="파일 목록"></pre>
-        <div class="terminal-log" id="terminalLog" aria-live="polite">
-          <div class="terminal-log-inner" id="terminalLogInner"></div>
-        </div>
+        <pre class="terminal-ls" id="terminalLs" aria-live="polite" aria-label="파일 목록"></pre>
         <div class="terminal-prompt" id="terminalPrompt" aria-label="터미널 입력">
           <div class="terminal-prompt-bar" id="terminalPromptBar" role="presentation">
             <span class="terminal-prompt-placeholder" id="terminalPromptPlaceholder">메시지를 입력하세요.</span>
@@ -95,6 +92,6 @@
     </main>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=term-ls-coin-1"></script>
 </body>
 </html>
