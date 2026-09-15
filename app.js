@@ -268,161 +268,229 @@ function buildCardData(coin) {
   };
 }
 
-// Front face has one job - "how does this coin's premium look right now" -
-// so it's just the header, the two prices, and one muted trend line. The 24h
-// range bar and the volume-share bar used to live here too, but three
-// different mini-widgets stacked on a simple comparison card just made it
-// noisy; both moved to the back, which already exists for "tell me more."
-function cardFrontHTML(coin, d) {
-  return `
-    <div class="card-head">
-      <div class="coin-id">
-        <span class="coin-symbol">${coin.symbol}</span>
-        <span class="coin-name">${coinNames[coin.symbol] || ''}</span>
-      </div>
-      <div class="premium-col">
-        <div class="premium-badge ${d.premiumClass}">${d.premiumStr}</div>
-        ${d.premiumTrendStr ? `<div class="premium-trend ${d.premiumTrendClass}">${d.premiumTrendStr}</div>` : ''}
-      </div>
-    </div>
-    <div class="price-rows">
-      <div class="price-row">
-        <span class="price-row-label">${d.baseHeaderName}</span>
-        <span class="price-row-value">
-          <span class="price-main">${d.baseMainStr}</span>
-          <span class="price-sub ${d.changeClass}">${d.changeStr}</span>
-        </span>
-      </div>
-      <div class="price-row">
-        <span class="price-row-label">${d.comparisonHeaderName}</span>
-        <span class="price-row-value${d.hasData ? '' : ' unavailable'}">
-          <span class="price-main">${d.comparisonMainStr}</span>
-          ${d.comparisonSubStr ? `<span class="price-sub ${d.comparisonSubClass}">${d.comparisonSubStr}</span>` : ''}
-        </span>
-      </div>
-    </div>
-    ${d.sparklinePoints ? `
-    <div class="sparkline-row">
-      <span class="stat-label">7일 추이</span>
-      <svg class="sparkline" viewBox="0 0 100 28" preserveAspectRatio="none">
-        <polyline points="${d.sparklinePoints}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
-      </svg>
-      <span class="sparkline-change ${d.sparklineChangeClass}">${d.sparkline7dChange}</span>
-    </div>` : ''}
-  `;
-}
-
-// Every stat row renders main value + sub-line, even when there is no date
-// to show (a non-breaking space holds the line open) - so all five rows are
-// exactly two lines tall instead of some being one line and some two, which
-// is what made the flipped card look uneven.
-function statValueHTML(main, sub) {
-  return `${main}<span class="stat-value-sub">${sub || ' '}</span>`;
-}
-
-function cardBackHTML(coin, d) {
-  return `
-    <div class="card-head">
-      <div class="coin-id">
-        <span class="coin-symbol">${coin.symbol}</span>
-        <span class="coin-name">${coinNames[coin.symbol] || ''}</span>
-      </div>
-    </div>
-    <div class="stat-list">
-      <div class="stat-row">
-        <span class="stat-label">시가총액 순위</span>
-        <span class="stat-value">${statValueHTML(d.marketCapRankStr)}</span>
-      </div>
-      <div class="stat-row">
-        <span class="stat-label">시가총액</span>
-        <span class="stat-value">${statValueHTML(d.marketCapStr)}</span>
-      </div>
-      <div class="stat-row">
-        <span class="stat-label">유통량</span>
-        <span class="stat-value">${statValueHTML(d.circulatingSupplyStr)}</span>
-      </div>
-      <div class="stat-row">
-        <span class="stat-label">최대발행량</span>
-        <span class="stat-value">${statValueHTML(d.maxSupplyStr)}</span>
-      </div>
-      <div class="stat-row">
-        <span class="stat-label">전고점 대비</span>
-        <span class="stat-value">${statValueHTML(d.athChangeStr, d.athDateStr)}</span>
-      </div>
-      <div class="stat-row">
-        <span class="stat-label">52주 최고</span>
-        <span class="stat-value">${statValueHTML(d.high52wStr, d.high52wDateStr)}</span>
-      </div>
-      <div class="stat-row">
-        <span class="stat-label">52주 최저</span>
-        <span class="stat-value">${statValueHTML(d.low52wStr, d.low52wDateStr)}</span>
-      </div>
-    </div>
-    ${d.hasRange ? `
-    <div class="range-row">
-      <div class="range-bar">
-        <div class="range-marker" style="left:${d.rangePct}%"></div>
-      </div>
-      <div class="range-labels">
-        <span>24h 저 ${d.low24hStr}</span>
-        <span>24h 고 ${d.high24hStr}</span>
-      </div>
-    </div>` : ''}
-    <div class="volume-row">
-      <div class="volume-bar">
-        <div class="volume-bar-fill domestic" style="width:${d.domesticPct}%"></div>
-        <div class="volume-bar-fill comparison" style="width:${100 - d.domesticPct}%"></div>
-      </div>
-      <div class="volume-labels">
-        <span><strong>${d.baseHeaderName}</strong> ${d.baseVolumeStr}억</span>
-        <span><strong>${d.comparisonHeaderName}</strong> ${d.comparisonVolumeStr}억</span>
-      </div>
-    </div>
-  `;
-}
-
-function cardInnerHTML(coin, d) {
+// Card shell is built once; polls only patch text/classes so the whole face
+// does not remount (that remount + card-flash was the 3s flicker).
+function cardShellHTML(coin) {
+  const name = coinNames[coin.symbol] || '';
   return `
     <div class="card-clip">
       <div class="card-flip">
-        <div class="card-face card-front">${cardFrontHTML(coin, d)}</div>
-        <div class="card-face card-back">${cardBackHTML(coin, d)}</div>
+        <div class="card-face card-front">
+          <div class="card-head">
+            <div class="coin-id">
+              <span class="coin-symbol">${coin.symbol}</span>
+              <span class="coin-name">${name}</span>
+            </div>
+            <div class="premium-col">
+              <div class="premium-badge premium-neutral" data-f="premium"></div>
+              <div class="premium-trend" data-f="premiumTrend" hidden></div>
+            </div>
+          </div>
+          <div class="price-rows">
+            <div class="price-row">
+              <span class="price-row-label" data-f="baseLabel"></span>
+              <span class="price-row-value">
+                <span class="price-main" data-f="baseMain"></span>
+                <span class="price-sub" data-f="baseSub"></span>
+              </span>
+            </div>
+            <div class="price-row">
+              <span class="price-row-label" data-f="cmpLabel"></span>
+              <span class="price-row-value" data-f="cmpValue">
+                <span class="price-main" data-f="cmpMain"></span>
+                <span class="price-sub" data-f="cmpSub" hidden></span>
+              </span>
+            </div>
+          </div>
+          <div class="sparkline-row" data-f="sparkRow" hidden>
+            <span class="stat-label">7일 추이</span>
+            <svg class="sparkline" viewBox="0 0 100 28" preserveAspectRatio="none">
+              <polyline data-f="sparkPoly" points="" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+            </svg>
+            <span class="sparkline-change" data-f="sparkChange"></span>
+          </div>
+        </div>
+        <div class="card-face card-back">
+          <div class="card-head">
+            <div class="coin-id">
+              <span class="coin-symbol">${coin.symbol}</span>
+              <span class="coin-name">${name}</span>
+            </div>
+          </div>
+          <div class="stat-list">
+            <div class="stat-row">
+              <span class="stat-label">시가총액 순위</span>
+              <span class="stat-value"><span data-f="mcapRank"></span><span class="stat-value-sub" data-f="mcapRankSub"> </span></span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">시가총액</span>
+              <span class="stat-value"><span data-f="mcap"></span><span class="stat-value-sub" data-f="mcapSub"> </span></span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">유통량</span>
+              <span class="stat-value"><span data-f="circ"></span><span class="stat-value-sub" data-f="circSub"> </span></span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">최대발행량</span>
+              <span class="stat-value"><span data-f="maxSup"></span><span class="stat-value-sub" data-f="maxSupSub"> </span></span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">전고점 대비</span>
+              <span class="stat-value"><span data-f="athChg"></span><span class="stat-value-sub" data-f="athDate"> </span></span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">52주 최고</span>
+              <span class="stat-value"><span data-f="hi52"></span><span class="stat-value-sub" data-f="hi52Date"> </span></span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">52주 최저</span>
+              <span class="stat-value"><span data-f="lo52"></span><span class="stat-value-sub" data-f="lo52Date"> </span></span>
+            </div>
+          </div>
+          <div class="range-row" data-f="rangeRow" hidden>
+            <div class="range-bar">
+              <div class="range-marker" data-f="rangeMarker"></div>
+            </div>
+            <div class="range-labels">
+              <span data-f="rangeLow"></span>
+              <span data-f="rangeHigh"></span>
+            </div>
+          </div>
+          <div class="volume-row">
+            <div class="volume-bar">
+              <div class="volume-bar-fill domestic" data-f="volDom"></div>
+              <div class="volume-bar-fill comparison" data-f="volCmp"></div>
+            </div>
+            <div class="volume-labels">
+              <span data-f="volDomLabel"></span>
+              <span data-f="volCmpLabel"></span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   `;
 }
 
-function flashCard(card) {
-  card.classList.remove('card-flash');
-  void card.offsetWidth;
-  card.classList.add('card-flash');
-  card.addEventListener('animationend', () => card.classList.remove('card-flash'), { once: true });
+function setText(el, text) {
+  if (!el) return;
+  const next = text == null ? '' : String(text);
+  if (el.textContent !== next) el.textContent = next;
 }
 
-// .card-clip has no intrinsic height (its faces are absolutely positioned -
-// see style.css), so it has to be told in px how tall to be: the currently
-// shown face's own content height, not whichever face is taller. `animate`
-// controls whether that change transitions (the height CSS transition is
-// always on, so a plain data refresh - snapping to a possibly-unchanged
-// height - must not animate) or snaps instantly (new cards, and price/stat
-// updates, where a height "settle" every 3s would just be noise).
+function setClass(el, className) {
+  if (!el || el.className === className) return;
+  el.className = className;
+}
+
+function setHidden(el, hidden) {
+  if (!el) return;
+  if (el.hidden !== hidden) el.hidden = hidden;
+}
+
+function setStyleProp(el, prop, value) {
+  if (!el) return;
+  if (el.style[prop] !== value) el.style[prop] = value;
+}
+
+function patchCard(card, d) {
+  const q = (key) => card.querySelector(`[data-f="${key}"]`);
+
+  const premium = q('premium');
+  setClass(premium, `premium-badge ${d.premiumClass}`);
+  setText(premium, d.premiumStr);
+
+  const trend = q('premiumTrend');
+  setHidden(trend, !d.premiumTrendStr);
+  setClass(trend, `premium-trend ${d.premiumTrendClass}`.trim());
+  setText(trend, d.premiumTrendStr);
+
+  setText(q('baseLabel'), d.baseHeaderName);
+  setText(q('baseMain'), d.baseMainStr);
+  const baseSub = q('baseSub');
+  setClass(baseSub, `price-sub ${d.changeClass}`.trim());
+  setText(baseSub, d.changeStr);
+
+  setText(q('cmpLabel'), d.comparisonHeaderName);
+  const cmpValue = q('cmpValue');
+  setClass(cmpValue, d.hasData ? 'price-row-value' : 'price-row-value unavailable');
+  setText(q('cmpMain'), d.comparisonMainStr);
+  const cmpSub = q('cmpSub');
+  setHidden(cmpSub, !d.comparisonSubStr);
+  setClass(cmpSub, `price-sub ${d.comparisonSubClass}`.trim());
+  setText(cmpSub, d.comparisonSubStr);
+
+  const sparkRow = q('sparkRow');
+  setHidden(sparkRow, !d.sparklinePoints);
+  if (d.sparklinePoints) {
+    const poly = q('sparkPoly');
+    if (poly && poly.getAttribute('points') !== d.sparklinePoints) {
+      poly.setAttribute('points', d.sparklinePoints);
+    }
+    const sparkChange = q('sparkChange');
+    setClass(sparkChange, `sparkline-change ${d.sparklineChangeClass}`.trim());
+    setText(sparkChange, d.sparkline7dChange);
+  }
+
+  setText(q('mcapRank'), d.marketCapRankStr);
+  setText(q('mcap'), d.marketCapStr);
+  setText(q('circ'), d.circulatingSupplyStr);
+  setText(q('maxSup'), d.maxSupplyStr);
+  setText(q('athChg'), d.athChangeStr);
+  setText(q('athDate'), d.athDateStr || '\u00a0');
+  setText(q('hi52'), d.high52wStr);
+  setText(q('hi52Date'), d.high52wDateStr || '\u00a0');
+  setText(q('lo52'), d.low52wStr);
+  setText(q('lo52Date'), d.low52wDateStr || '\u00a0');
+
+  const rangeRow = q('rangeRow');
+  setHidden(rangeRow, !d.hasRange);
+  if (d.hasRange) {
+    setStyleProp(q('rangeMarker'), 'left', `${d.rangePct}%`);
+    setText(q('rangeLow'), `24h 저 ${d.low24hStr}`);
+    setText(q('rangeHigh'), `24h 고 ${d.high24hStr}`);
+  }
+
+  setStyleProp(q('volDom'), 'width', `${d.domesticPct}%`);
+  setStyleProp(q('volCmp'), 'width', `${100 - d.domesticPct}%`);
+  setVolumeLabel(q('volDomLabel'), d.baseHeaderName, d.baseVolumeStr);
+  setVolumeLabel(q('volCmpLabel'), d.comparisonHeaderName, d.comparisonVolumeStr);
+
+  const isFlipped = card.classList.contains('is-flipped');
+  const nextClass = `coin-card${d.bsvWarnClass ? ' ' + d.bsvWarnClass : ''}${isFlipped ? ' is-flipped' : ''}`;
+  if (card.className !== nextClass) card.className = nextClass;
+}
+
+function setVolumeLabel(el, exchangeName, volumeStr) {
+  if (!el) return;
+  const next = `${exchangeName}|${volumeStr}`;
+  if (el.dataset.volKey === next) return;
+  el.dataset.volKey = next;
+  el.replaceChildren();
+  const strong = document.createElement('strong');
+  strong.textContent = exchangeName;
+  el.append(strong, ` ${volumeStr}억`);
+}
+
+// .card-clip has no intrinsic height (faces are absolutely positioned).
+// Only rewrite height when it actually changed — avoids layout thrash on
+// every 3s poll when numbers alone moved.
 function syncCardHeight(card, animate) {
   const clip = card.querySelector('.card-clip');
   if (!clip) return;
   const isFlipped = card.classList.contains('is-flipped');
   const face = card.querySelector(isFlipped ? '.card-back' : '.card-front');
   if (!face) return;
-  // offsetHeight (content + padding + border), not scrollHeight (which
-  // excludes the face's 1px border and would let it get clipped by
-  // .card-clip's overflow: hidden).
   const targetHeight = face.offsetHeight;
+  const next = `${targetHeight}px`;
+  if (clip.style.height === next) return;
   if (animate) {
-    clip.style.height = `${targetHeight}px`;
+    clip.style.height = next;
     return;
   }
   const prevTransition = clip.style.transition;
   clip.style.transition = 'none';
-  clip.style.height = `${targetHeight}px`;
+  clip.style.height = next;
   void clip.offsetHeight;
   clip.style.transition = prevTransition;
 }
@@ -442,24 +510,24 @@ function renderCoinGrid(coins, isLoading) {
 
   if (emptyState) emptyState.hidden = true;
 
+  const keep = new Set();
   coins.forEach(coin => {
+    keep.add(coin.symbol);
     const d = buildCardData(coin);
     let card = grid.querySelector(`.coin-card[data-symbol="${coin.symbol}"]`);
     if (!card) {
       card = document.createElement('article');
       card.className = 'coin-card';
       card.dataset.symbol = coin.symbol;
+      card.innerHTML = cardShellHTML(coin);
       grid.appendChild(card);
     }
-    const nextHTML = cardInnerHTML(coin, d);
-    const changed = card.innerHTML.replace(/\s+/g, ' ').trim() !== nextHTML.replace(/\s+/g, ' ').trim();
-    card.innerHTML = nextHTML;
-    // A poll refresh replaces the card's content but must not un-flip a card
-    // the user has turned over to read its back.
-    const isFlipped = card.classList.contains('is-flipped');
-    card.className = `coin-card${d.bsvWarnClass ? ' ' + d.bsvWarnClass : ''}${isFlipped ? ' is-flipped' : ''}`;
+    patchCard(card, d);
     syncCardHeight(card, false);
-    if (changed) flashCard(card);
+  });
+
+  grid.querySelectorAll('.coin-card').forEach(card => {
+    if (!keep.has(card.dataset.symbol)) card.remove();
   });
 }
 
@@ -504,8 +572,62 @@ function setupSegmented(containerId, group) {
   });
 }
 
+const THEME_STORAGE_KEY = 'kimp-coin-theme';
+const THEME_ORDER = ['light', 'dark', 'black'];
+const THEME_LABELS = {
+  light: '라이트',
+  dark: '다크',
+  black: '블랙'
+};
+
+function normalizeTheme(theme) {
+  return THEME_ORDER.includes(theme) ? theme : 'light';
+}
+
+function getPreferredTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    if (THEME_ORDER.includes(saved)) return saved;
+  } catch (err) {
+    /* ignore */
+  }
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function nextTheme(current) {
+  const idx = THEME_ORDER.indexOf(normalizeTheme(current));
+  return THEME_ORDER[(idx + 1) % THEME_ORDER.length];
+}
+
+function applyTheme(theme) {
+  const next = normalizeTheme(theme);
+  document.documentElement.setAttribute('data-theme', next);
+  const btn = document.getElementById('themeToggle');
+  if (btn) {
+    const upcoming = nextTheme(next);
+    btn.setAttribute('aria-label', `${THEME_LABELS[upcoming]} 테마로 전환`);
+    btn.title = `${THEME_LABELS[next]} · 클릭 시 ${THEME_LABELS[upcoming]}`;
+  }
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, next);
+  } catch (err) {
+    /* ignore */
+  }
+}
+
+function setupThemeToggle() {
+  applyTheme(getPreferredTheme());
+  const btn = document.getElementById('themeToggle');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const current = normalizeTheme(document.documentElement.getAttribute('data-theme'));
+    applyTheme(nextTheme(current));
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   updateHeaderTodayDate();
+  setupThemeToggle();
   setupCardFlip();
   setupSegmented('comparisonSegmented', 'comparison');
 
