@@ -459,21 +459,6 @@ function formatLsChangeSize(changeRate) {
   return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
 }
 
-function setupTerminalPrompt() {
-  const bar = document.getElementById('terminalPromptBar');
-  if (!bar) return;
-
-  // Visual-only prompt: never open the soft keyboard on mobile.
-  const blockKeyboard = (e) => {
-    e.preventDefault();
-  };
-
-  bar.addEventListener('pointerdown', blockKeyboard);
-  bar.addEventListener('touchstart', blockKeyboard, { passive: false });
-  bar.addEventListener('mousedown', blockKeyboard);
-  bar.addEventListener('click', blockKeyboard);
-}
-
 function lsOwnerHTML(group) {
   // Fixed-width owner/group: " user  bsv " — group is coin id (or "coin" for . / ..).
   const g = String(group || 'coin').toLowerCase().padEnd(4, ' ').slice(0, 4);
@@ -927,7 +912,6 @@ document.addEventListener('DOMContentLoaded', () => {
   setupThemeToggle();
   setupCardFlip();
   setupSegmented('comparisonSegmented', 'comparison');
-  setupTerminalPrompt();
   setupTerminalLsExchangeCycle();
 
   refresh(true);

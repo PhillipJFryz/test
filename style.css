@@ -796,10 +796,10 @@ body {
   --term-fs: 0.56rem;
 }
 
-/* Terminal rem base — 21px for mobile readability. */
+/* Terminal rem base — one step down from 21px (fit phone viewport). */
 html[data-theme="terminal"],
 html[data-theme="terminal-color"] {
-  font-size: 21px;
+  font-size: 20px;
 }
 
 [data-theme="terminal"] body,
@@ -846,8 +846,8 @@ html[data-theme="terminal-color"] {
 [data-theme="terminal"] .main,
 [data-theme="terminal-color"] .main {
   max-width: 42rem;
-  /* +1cm top; L/R match bottom prompt window (--term-pad-x) */
-  padding-top: calc(0.4rem + 1cm);
+  /* L/R match bottom prompt window (--term-pad-x); top flush after -1cm */
+  padding-top: 0.4rem;
   padding-right: max(var(--term-pad-x), env(safe-area-inset-right, 0px));
   padding-bottom: 2rem;
   padding-left: max(var(--term-pad-x), env(safe-area-inset-left, 0px));
@@ -933,7 +933,7 @@ html[data-theme="terminal-color"] {
   flex-direction: column;
   gap: 0.4rem;
   min-height: 0;
-  padding-bottom: 5.5rem;
+  padding-bottom: 2.25rem;
 }
 
 [data-theme="terminal"] .terminal-shell,
@@ -1038,7 +1038,7 @@ html[data-theme="terminal-color"] {
   100% { opacity: 1; }
 }
 
-/* Bottom prompt bar — chat-input silhouette, terminal chrome */
+/* Bottom camouflage command line only (no chat input bar) */
 .terminal-prompt {
   position: fixed;
   left: 0;
@@ -1047,16 +1047,15 @@ html[data-theme="terminal-color"] {
   z-index: 20;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding-top: 0.55rem;
+  gap: 0;
+  padding-top: 0.45rem;
   padding-right: max(var(--term-pad-x), env(safe-area-inset-right, 0px));
-  padding-bottom: calc(0.55rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px));
   padding-left: max(var(--term-pad-x), env(safe-area-inset-left, 0px));
-  background: linear-gradient(180deg, transparent 0%, #000 28%);
+  background: linear-gradient(180deg, transparent 0%, #000 40%);
   pointer-events: none;
 }
 
-/* Camouflage shell line above the fake chat input — same L edge as ls + bar */
 .terminal-cmdline {
   max-width: 42rem;
   margin: 0 auto;
@@ -1073,91 +1072,17 @@ html[data-theme="terminal-color"] {
   user-select: none;
 }
 
-.terminal-prompt-bar {
-  pointer-events: auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.65rem;
-  max-width: 42rem;
-  margin: 0 auto;
-  min-height: 2.55rem;
-  padding: 0.55rem 0.75rem 0.55rem 0.95rem;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 1.15rem;
-  background: #121212;
-  color: var(--text-faint);
-  cursor: default;
-  user-select: none;
-  -webkit-user-select: none;
-  outline: none;
-  caret-color: transparent;
-}
-
-.terminal-prompt-bar:focus-visible {
-  border-color: rgba(255, 255, 255, 0.32);
-}
-
-.terminal-prompt-placeholder {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.38);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.terminal-prompt-icons {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.42rem;
-  flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.42);
-  font-size: 0.72rem;
-  line-height: 1;
-}
-
-.tp-ico {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  opacity: 0.85;
-}
-
-.tp-ico.tp-sep {
-  width: 1px;
-  min-width: 1px;
-  height: 1em;
-  margin: 0 0.1rem;
-  background: rgba(255, 255, 255, 0.22);
-  opacity: 1;
-}
-
-.tp-ico.tp-send {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-[data-theme="terminal-color"] .terminal-prompt-bar {
-  border-color: rgba(125, 211, 160, 0.28);
-}
-
-[data-theme="terminal-color"] .tp-ico.tp-send {
-  color: var(--accent);
-}
-
 @media (max-width: 560px) {
   html[data-theme="terminal"],
   html[data-theme="terminal-color"] {
-    font-size: 21px;
+    font-size: 20px;
   }
 
   [data-theme="terminal"] .main,
   [data-theme="terminal-color"] .main {
-    padding-top: calc(0.35rem + 1cm);
+    padding-top: 0.35rem;
     padding-right: max(var(--term-pad-x), env(safe-area-inset-right, 0px));
-    padding-bottom: 1.75rem;
+    padding-bottom: 1.25rem;
     padding-left: max(var(--term-pad-x), env(safe-area-inset-left, 0px));
   }
 
@@ -1181,7 +1106,7 @@ html[data-theme="terminal-color"] {
   }
 
   .terminal-shell {
-    padding-bottom: 5.75rem;
+    padding-bottom: 2.1rem;
   }
 
   .terminal-prompt {
@@ -1192,20 +1117,5 @@ html[data-theme="terminal-color"] {
   .terminal-ls {
     font-size: var(--term-fs);
     line-height: 1.15;
-  }
-
-  .terminal-prompt-bar {
-    min-height: 2.7rem;
-    border-radius: 1.25rem;
-    padding: 0.6rem 0.7rem 0.6rem 0.9rem;
-  }
-
-  .terminal-prompt-placeholder {
-    font-size: 0.72rem;
-  }
-
-  .terminal-prompt-icons {
-    gap: 0.35rem;
-    font-size: 0.68rem;
   }
 }
