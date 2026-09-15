@@ -11,8 +11,7 @@
         var t = localStorage.getItem('kimp-coin-theme');
         var ok = t === 'dark' || t === 'light' || t === 'black' || t === 'terminal' || t === 'terminal-color';
         if (ok) document.documentElement.setAttribute('data-theme', t);
-        else if (window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.setAttribute('data-theme', 'dark');
-        else document.documentElement.setAttribute('data-theme', 'light');
+        else document.documentElement.setAttribute('data-theme', 'terminal');
       } catch (e) {}
     })();
   </script>
@@ -74,8 +73,24 @@
         <div class="empty-state" id="emptyState">데이터 로딩 중...</div>
       </section>
 
-      <section class="terminal-log" id="terminalLog" hidden aria-live="polite">
-        <div class="terminal-log-inner" id="terminalLogInner"></div>
+      <section class="terminal-shell" id="terminalShell" hidden>
+        <pre class="terminal-ls" id="terminalLs" aria-label="파일 목록"></pre>
+        <div class="terminal-log" id="terminalLog" aria-live="polite">
+          <div class="terminal-log-inner" id="terminalLogInner"></div>
+        </div>
+        <div class="terminal-prompt" id="terminalPrompt" aria-label="터미널 입력">
+          <div class="terminal-prompt-bar" id="terminalPromptBar" role="presentation">
+            <span class="terminal-prompt-placeholder" id="terminalPromptPlaceholder">메시지를 입력하세요.</span>
+            <span class="terminal-prompt-icons" aria-hidden="true">
+              <svg class="tp-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h4l10.5-10.5a1.8 1.8 0 0 0-2.5-2.5L5.5 16.5V19z"/><path d="M13.5 6.5l4 4"/></svg>
+              <svg class="tp-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.5 2 3.5 2 3.5-2 3.5-2M9 10h.01M15 10h.01"/></svg>
+              <svg class="tp-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.6l-8.8 8.8a5 5 0 0 1-7.1-7.1l9.2-9.2a3.2 3.2 0 0 1 4.5 4.5L9.7 18.1"/></svg>
+              <svg class="tp-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3z"/><path d="M18 14l.7 2.1L21 17l-2.3.7L18 20l-.7-2.3L15 17l2.3-.9L18 14z"/></svg>
+              <span class="tp-ico tp-sep"></span>
+              <svg class="tp-ico tp-send" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </span>
+          </div>
+        </div>
       </section>
     </main>
   </div>

@@ -423,35 +423,112 @@ function formatLogTime(date = new Date()) {
 function syncLayoutMode() {
   const term = isTerminalTheme();
   const grid = document.getElementById('coinGrid');
-  const log = document.getElementById('terminalLog');
+  const shell = document.getElementById('terminalShell');
   if (grid) grid.hidden = term;
-  if (log) log.hidden = !term;
+  if (shell) shell.hidden = !term;
+}
+
+function formatLsStamp(date = new Date()) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const mon = months[date.getMonth()];
+  const day = String(date.getDate()).padStart(2, ' ');
+  const h = String(date.getHours()).padStart(2, '0');
+  const m = String(date.getMinutes()).padStart(2, '0');
+  return `${mon} ${day} ${h}:${m}`;
+}
+
+function padLeft(str, width) {
+  const s = String(str);
+  return s.length >= width ? s : ' '.repeat(width - s.length) + s;
+}
+
+function renderTerminalLs(coins) {
+  const el = document.getElementById('terminalLs');
+  if (!el) return;
+
+  const stamp = formatLsStamp();
+  const rows = [
+    { mode: 'drwxr-xr-x', n: 2, size: 4096, name: '.' },
+    { mode: 'drwxr-xr-x', n: 3, size: 4096, name: '..' },
+    { mode: '-rw-r--r--', n: 1, size: 128, name: 'upbit.cfg' },
+    { mode: '-rw-r--r--', n: 1, size: 96, name: `${state.comparison}.cfg` }
+  ];
+
+  (coins || []).forEach((coin, i) => {
+    const size = coin.basePrice != null
+      ? Math.max(64, Math.round(Number(coin.basePrice) % 9000) + 100)
+      : 128 + i * 16;
+    rows.push({
+      mode: '-rw-r--r--',
+      n: 1,
+      size,
+      name: `${coin.symbol.toLowerCase()}.kimp`
+    });
+  });
+
+  if (!coins || !coins.length) {
+    ['bsv', 'btc', 'bch', 'usdt'].forEach((sym, i) => {
+      rows.push({ mode: '-rw-r--r--', n: 1, size: 128 + i * 16, name: `${sym}.kimp` });
+    });
+  }
+
+  const lines = [
+    `<span class="ls-cmd">$ ls -al</span>`,
+    `<span class="ls-meta">total ${rows.length * 4}</span>`
+  ];
+
+  rows.forEach(r => {
+    lines.push(
+      `<span class="ls-meta">${r.mode}  ${r.n} user  coin  ${padLeft(r.size, 5)} ${stamp} </span>` +
+      `<span class="ls-name">${r.name}</span>`
+    );
+  });
+
+  el.innerHTML = lines.join('\n');
+}
+
+function setupTerminalPrompt() {
+  const bar = document.getElementById('terminalPromptBar');
+  if (!bar) return;
+
+  // Visual-only prompt: never open the soft keyboard on mobile.
+  const blockKeyboard = (e) => {
+    e.preventDefault();
+  };
+
+  bar.addEventListener('pointerdown', blockKeyboard);
+  bar.addEventListener('touchstart', blockKeyboard, { passive: false });
+  bar.addEventListener('mousedown', blockKeyboard);
+  bar.addEventListener('click', blockKeyboard);
 }
 
 function terminalShellHTML(coin) {
+  // One primary log line per coin (Render-style), then a range sub-line.
   return `
-    <div class="term-line">
+    <div class="term-line term-line-main">
       <span class="term-time" data-f="time"></span>
       <span class="term-body">
         <span class="term-sym">${coin.symbol}</span>
         <span class="term-label"> kimp </span>
         <span class="term-val" data-f="premium"></span>
-      </span>
-    </div>
-    <div class="term-line">
-      <span class="term-time" aria-hidden="true"></span>
-      <span class="term-body">
+        <span class="term-gap"></span>
         <span class="term-label" data-f="baseLabel"></span>
         <span class="term-val" data-f="baseMain"></span>
         <span class="term-val" data-f="baseSub"></span>
-      </span>
-    </div>
-    <div class="term-line">
-      <span class="term-time" aria-hidden="true"></span>
-      <span class="term-body" data-f="cmpBody">
+        <span class="term-gap"></span>
         <span class="term-label" data-f="cmpLabel"></span>
         <span class="term-val" data-f="cmpMain"></span>
         <span class="term-val" data-f="cmpSub"></span>
+      </span>
+    </div>
+    <div class="term-line term-line-range">
+      <span class="term-time" aria-hidden="true"></span>
+      <span class="term-body">
+        <span class="term-label">금일저 </span>
+        <span class="term-val" data-f="lo24"></span>
+        <span class="term-gap"></span>
+        <span class="term-label">금일고 </span>
+        <span class="term-val" data-f="hi24"></span>
       </span>
     </div>
   `;
@@ -487,9 +564,14 @@ function patchTerminalBlock(block, d, stamp) {
     setHidden(cmpSub, true);
     setText(cmpSub, '');
   }
+
+  setTextFlash(q('lo24'), d.low24hStr);
+  setTextFlash(q('hi24'), d.high24hStr);
 }
 
 function renderTerminalLog(coins, isLoading) {
+  renderTerminalLs(coins);
+
   const inner = document.getElementById('terminalLogInner');
   if (!inner) return;
 
@@ -515,10 +597,12 @@ function renderTerminalLog(coins, isLoading) {
     keep.add(coin.symbol);
     const d = buildCardData(coin);
     let block = inner.querySelector(`.term-block[data-symbol="${coin.symbol}"]`);
-    if (!block) {
+    if (!block || block.dataset.shell !== 'v2') {
+      if (block) block.remove();
       block = document.createElement('article');
       block.className = 'term-block';
       block.dataset.symbol = coin.symbol;
+      block.dataset.shell = 'v2';
       block.innerHTML = terminalShellHTML(coin);
       inner.appendChild(block);
     }
@@ -730,7 +814,7 @@ const THEME_LABELS = {
 };
 
 function normalizeTheme(theme) {
-  return THEME_ORDER.includes(theme) ? theme : 'light';
+  return THEME_ORDER.includes(theme) ? theme : 'terminal';
 }
 
 function getPreferredTheme() {
@@ -740,7 +824,7 @@ function getPreferredTheme() {
   } catch (err) {
     /* ignore */
   }
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  return 'terminal';
 }
 
 function nextTheme(current) {
@@ -782,6 +866,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupThemeToggle();
   setupCardFlip();
   setupSegmented('comparisonSegmented', 'comparison');
+  setupTerminalPrompt();
 
   refresh(true);
   setInterval(() => refresh(false), REFRESH_INTERVAL);
