@@ -23,6 +23,8 @@ const state = {
   comparison: 'gate'
 };
 
+let lastCoins = [];
+
 function formatKRWOnly(value) {
   return new Intl.NumberFormat('ko-KR', {
     style: 'decimal',
@@ -378,6 +380,19 @@ function setText(el, text) {
   if (el.textContent !== next) el.textContent = next;
 }
 
+// Only flash when the visible string actually changes (poll tick with
+// identical values stays quiet — no whole-line blink).
+function setTextFlash(el, text) {
+  if (!el) return;
+  const next = text == null ? '' : String(text);
+  if (el.textContent === next) return;
+  el.textContent = next;
+  el.classList.remove('is-flash');
+  void el.offsetWidth;
+  el.classList.add('is-flash');
+  el.addEventListener('animationend', () => el.classList.remove('is-flash'), { once: true });
+}
+
 function setClass(el, className) {
   if (!el || el.className === className) return;
   el.className = className;
@@ -391,6 +406,128 @@ function setHidden(el, hidden) {
 function setStyleProp(el, prop, value) {
   if (!el) return;
   if (el.style[prop] !== value) el.style[prop] = value;
+}
+
+function isTerminalTheme(theme) {
+  const t = theme || document.documentElement.getAttribute('data-theme');
+  return t === 'terminal' || t === 'terminal-color';
+}
+
+function formatLogTime(date = new Date()) {
+  const h = String(date.getHours()).padStart(2, '0');
+  const m = String(date.getMinutes()).padStart(2, '0');
+  const s = String(date.getSeconds()).padStart(2, '0');
+  return `${h}:${m}:${s}`;
+}
+
+function syncLayoutMode() {
+  const term = isTerminalTheme();
+  const grid = document.getElementById('coinGrid');
+  const log = document.getElementById('terminalLog');
+  if (grid) grid.hidden = term;
+  if (log) log.hidden = !term;
+}
+
+function terminalShellHTML(coin) {
+  return `
+    <div class="term-line">
+      <span class="term-time" data-f="time"></span>
+      <span class="term-body">
+        <span class="term-sym">${coin.symbol}</span>
+        <span class="term-label"> kimp </span>
+        <span class="term-val" data-f="premium"></span>
+      </span>
+    </div>
+    <div class="term-line">
+      <span class="term-time" aria-hidden="true"></span>
+      <span class="term-body">
+        <span class="term-label" data-f="baseLabel"></span>
+        <span class="term-val" data-f="baseMain"></span>
+        <span class="term-val" data-f="baseSub"></span>
+      </span>
+    </div>
+    <div class="term-line">
+      <span class="term-time" aria-hidden="true"></span>
+      <span class="term-body" data-f="cmpBody">
+        <span class="term-label" data-f="cmpLabel"></span>
+        <span class="term-val" data-f="cmpMain"></span>
+        <span class="term-val" data-f="cmpSub"></span>
+      </span>
+    </div>
+  `;
+}
+
+function patchTerminalBlock(block, d, stamp) {
+  const q = (key) => block.querySelector(`[data-f="${key}"]`);
+  setText(q('time'), stamp);
+
+  const premium = q('premium');
+  const premCls = d.premiumClass === 'premium-positive'
+    ? 'term-val positive'
+    : d.premiumClass === 'premium-negative'
+      ? 'term-val negative'
+      : 'term-val';
+  setClass(premium, premCls);
+  setTextFlash(premium, d.premiumStr);
+
+  setText(q('baseLabel'), `${d.baseHeaderName} `);
+  setTextFlash(q('baseMain'), `${d.baseMainStr} `);
+  const baseSub = q('baseSub');
+  setClass(baseSub, `term-val ${d.changeClass}`.trim());
+  setTextFlash(baseSub, d.changeStr);
+
+  setText(q('cmpLabel'), `${d.comparisonHeaderName} `);
+  setTextFlash(q('cmpMain'), d.hasData ? `${d.comparisonMainStr}` : d.comparisonMainStr);
+  const cmpSub = q('cmpSub');
+  if (d.comparisonSubStr) {
+    setHidden(cmpSub, false);
+    setClass(cmpSub, `term-val ${d.comparisonSubClass}`.trim());
+    setTextFlash(cmpSub, ` ${d.comparisonSubStr}`);
+  } else {
+    setHidden(cmpSub, true);
+    setText(cmpSub, '');
+  }
+}
+
+function renderTerminalLog(coins, isLoading) {
+  const inner = document.getElementById('terminalLogInner');
+  if (!inner) return;
+
+  if (isLoading || !coins || coins.length === 0) {
+    inner.querySelectorAll('.term-block').forEach(b => b.remove());
+    let empty = inner.querySelector('.term-empty');
+    if (!empty) {
+      empty = document.createElement('div');
+      empty.className = 'term-empty';
+      inner.appendChild(empty);
+    }
+    empty.textContent = isLoading ? 'fetching market data...' : 'no data';
+    empty.hidden = false;
+    return;
+  }
+
+  const empty = inner.querySelector('.term-empty');
+  if (empty) empty.hidden = true;
+
+  const stamp = formatLogTime();
+  const keep = new Set();
+  coins.forEach(coin => {
+    keep.add(coin.symbol);
+    const d = buildCardData(coin);
+    let block = inner.querySelector(`.term-block[data-symbol="${coin.symbol}"]`);
+    if (!block) {
+      block = document.createElement('article');
+      block.className = 'term-block';
+      block.dataset.symbol = coin.symbol;
+      block.innerHTML = terminalShellHTML(coin);
+      inner.appendChild(block);
+    }
+    patchTerminalBlock(block, d, stamp);
+  });
+
+  inner.querySelectorAll('.term-block').forEach(block => {
+    if (!keep.has(block.dataset.symbol)) block.remove();
+  });
 }
 
 function patchCard(card, d) {
@@ -496,6 +633,15 @@ function syncCardHeight(card, animate) {
 }
 
 function renderCoinGrid(coins, isLoading) {
+  syncLayoutMode();
+
+  if (!isLoading && coins && coins.length) lastCoins = coins;
+
+  if (isTerminalTheme()) {
+    renderTerminalLog(coins, isLoading);
+    return;
+  }
+
   const grid = document.getElementById('coinGrid');
   const emptyState = document.getElementById('emptyState');
 
@@ -542,6 +688,7 @@ async function refresh(isInitial) {
 function setupCardFlip() {
   const grid = document.getElementById('coinGrid');
   grid.addEventListener('click', (e) => {
+    if (isTerminalTheme()) return;
     const card = e.target.closest('.coin-card');
     if (!card) return;
     // Measure the face we're about to reveal and set that as the height
@@ -573,11 +720,13 @@ function setupSegmented(containerId, group) {
 }
 
 const THEME_STORAGE_KEY = 'kimp-coin-theme';
-const THEME_ORDER = ['light', 'dark', 'black'];
+const THEME_ORDER = ['light', 'dark', 'black', 'terminal', 'terminal-color'];
 const THEME_LABELS = {
   light: '라이트',
   dark: '다크',
-  black: '블랙'
+  black: '블랙',
+  terminal: '터미널',
+  'terminal-color': '터미널 컬러'
 };
 
 function normalizeTheme(theme) {
@@ -613,6 +762,7 @@ function applyTheme(theme) {
   } catch (err) {
     /* ignore */
   }
+  syncLayoutMode();
 }
 
 function setupThemeToggle() {
@@ -622,6 +772,8 @@ function setupThemeToggle() {
   btn.addEventListener('click', () => {
     const current = normalizeTheme(document.documentElement.getAttribute('data-theme'));
     applyTheme(nextTheme(current));
+    if (lastCoins.length) renderCoinGrid(lastCoins, false);
+    else refresh(false);
   });
 }
 
