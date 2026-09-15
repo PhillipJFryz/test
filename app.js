@@ -482,9 +482,12 @@ function lsRowHTML({ mode, nlink, name, sizeKey, tone, group }) {
   );
 }
 
+const TERM_CMD_LINE =
+  'user@local:~$ sudo vim /etc/apt/sources.list.d/ubuntu.sources /var/log/syslog /usr/local/etc/kimp/gate.cfg +":set nowrap nonumber" +"/premium"';
+
 function ensureTerminalLsShell(el, coins) {
   const cmp = state.comparison;
-  const shellKey = `v7|${cmp}|${(coins || []).map(c => c.symbol).join(',')}`;
+  const shellKey = `v8|${cmp}|${(coins || []).map(c => c.symbol).join(',')}`;
   if (el.dataset.shell === shellKey) return;
 
   const dirCount = (coins && coins.length) || 0;
@@ -520,6 +523,9 @@ function ensureTerminalLsShell(el, coins) {
   if (!coins || !coins.length) {
     parts.push(`<span class="ls-empty">waiting for market fetch...</span>`);
   }
+
+  // Camouflage prompt scrolls with ls (after last coin / usdt) — not a fixed footer.
+  parts.push(`<span class="ls-cmdline">${TERM_CMD_LINE}</span>`);
 
   el.innerHTML = parts.join('\n');
   el.dataset.shell = shellKey;
