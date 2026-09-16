@@ -33,8 +33,8 @@ function formatKRWOnly(value) {
   }).format(value);
 }
 
-function formatEok2(value) {
-  return (value / 100000000).toFixed(2) + '억';
+function formatEok(value) {
+  return (value / 100000000).toFixed(4) + '억';
 }
 
 function formatTradeVolumeEokNumber(value) {
@@ -93,6 +93,16 @@ function formatSignedPercent(value, digits) {
   return `${value >= 0 ? '+' : ''}${value.toFixed(digits)}%`;
 }
 
+// CoinGecko markets `sparkline_in_7d` is ~hourly over 7d (~168 pts).
+// Take the last seventh of the series as an approximate 1-day window —
+// no extra API call, same cache as supply/ATH.
+function sliceSparkline1d(prices) {
+  const clean = (prices || []).filter(v => typeof v === 'number' && Number.isFinite(v));
+  if (clean.length < 2) return clean;
+  const oneDayCount = Math.max(2, Math.round(clean.length / 7));
+  return clean.slice(-oneDayCount);
+}
+
 // Builds an SVG polyline `points` attribute from a raw price series,
 // normalized into a 0-100 x / 0-28 y box so the shape reads regardless of
 // the coin's absolute price. Gaps CoinGecko sometimes leaves as null are
@@ -146,7 +156,7 @@ function updateDocumentTitle(coins) {
 }
 
 function formatKRWMain(value, symbol) {
-  return symbol === 'BTC' ? formatEok2(value) : `${formatKRWOnly(value)}원`;
+  return (symbol === 'BTC' || symbol === 'BCH') ? formatEok(value) : `${formatKRWOnly(value)}원`;
 }
 
 function changeRateDisplay(changeRate) {
@@ -232,8 +242,8 @@ function buildCardData(coin) {
     rangePct = ((coin.basePrice - coin.low24h) / (coin.high24h - coin.low24h)) * 100;
     rangePct = Math.min(100, Math.max(0, rangePct));
   }
-  const low24hStr = coin.low24h != null ? formatKRWOnly(coin.low24h) : '-';
-  const high24hStr = coin.high24h != null ? formatKRWOnly(coin.high24h) : '-';
+  const low24hStr = coin.low24h != null ? formatKRWMain(coin.low24h, coin.symbol) : '-';
+  const high24hStr = coin.high24h != null ? formatKRWMain(coin.high24h, coin.symbol) : '-';
 
   // Premium trend: only rendered once the server has ~1h of samples for this
   // exchange pair (see getPremiumChange1h in server.js) - null until then.
@@ -246,13 +256,14 @@ function buildCardData(coin) {
   // direction - a full-saturation red/green squiggle next to the premium
   // badge competed with it for attention. Only the small percentage label
   // keeps the positive/negative color, same as everywhere else on the card.
-  const sparklinePoints = buildSparklinePoints(coin.sparkline7d);
-  const sparkline = coin.sparkline7d?.filter(v => typeof v === 'number' && Number.isFinite(v)) || [];
-  const sparkline7dChangeValue = sparkline.length >= 2
+  // API still ships sparkline7d; UI shows the last ~24h slice as "1일 추이".
+  const sparkline = sliceSparkline1d(coin.sparkline7d);
+  const sparklinePoints = buildSparklinePoints(sparkline);
+  const sparkline1dChangeValue = sparkline.length >= 2
     ? ((sparkline[sparkline.length - 1] - sparkline[0]) / sparkline[0]) * 100
     : null;
-  const sparkline7dChange = sparkline7dChangeValue != null ? formatSignedPercent(sparkline7dChangeValue, 1) : null;
-  const sparklineChangeClass = sparkline7dChangeValue == null ? '' : (sparkline7dChangeValue >= 0 ? 'positive' : 'negative');
+  const sparkline1dChange = sparkline1dChangeValue != null ? formatSignedPercent(sparkline1dChangeValue, 1) : null;
+  const sparklineChangeClass = sparkline1dChangeValue == null ? '' : (sparkline1dChangeValue >= 0 ? 'positive' : 'negative');
 
   return {
     premiumClass, premiumStr,
@@ -266,7 +277,7 @@ function buildCardData(coin) {
     athChangeStr, athDateStr,
     hasRange, rangePct, low24hStr, high24hStr,
     premiumTrendStr, premiumTrendClass,
-    sparklinePoints, sparkline7dChange, sparklineChangeClass
+    sparklinePoints, sparkline1dChange, sparklineChangeClass
   };
 }
 
@@ -305,7 +316,7 @@ function cardShellHTML(coin) {
             </div>
           </div>
           <div class="sparkline-row" data-f="sparkRow" hidden>
-            <span class="stat-label">7일 추이</span>
+            <span class="stat-label">1일 추이</span>
             <svg class="sparkline" viewBox="0 0 100 28" preserveAspectRatio="none">
               <polyline data-f="sparkPoly" points="" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
             </svg>
@@ -436,14 +447,14 @@ function padLeft(str, width) {
 }
 
 // Raw digits / signed % look like Unix file sizes; no "원"/"억" suffixes.
-// BTC/BCH use 억 units to 2 decimals (e.g. 1.33) so mobile size column stays short.
+// BTC/BCH use 억 units to 4 decimals (e.g. 1.3342) so small moves stay visible.
 // Upbit 24h % lives on its own `chg` row under `upbit` (not glued to price).
 const LS_SIZE_WIDTH = 12;
 
 function formatLsPriceSize(value, symbol) {
   if (value == null || !Number.isFinite(Number(value))) return '-';
   const n = Number(value);
-  if (symbol === 'BTC' || symbol === 'BCH') return (n / 1e8).toFixed(2);
+  if (symbol === 'BTC' || symbol === 'BCH') return (n / 1e8).toFixed(4);
   return String(Math.round(n));
 }
 
@@ -657,7 +668,7 @@ function patchCard(card, d) {
     }
     const sparkChange = q('sparkChange');
     setClass(sparkChange, `sparkline-change ${d.sparklineChangeClass}`.trim());
-    setText(sparkChange, d.sparkline7dChange);
+    setText(sparkChange, d.sparkline1dChange);
   }
 
   setText(q('mcapRank'), d.marketCapRankStr);
