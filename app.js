@@ -34,7 +34,7 @@ function formatKRWOnly(value) {
 }
 
 function formatEok(value) {
-  return (value / 100000000).toFixed(4) + '억';
+  return (value / 100000000).toFixed(5) + '억';
 }
 
 function formatTradeVolumeEokNumber(value) {
@@ -437,27 +437,40 @@ function padLeft(str, width) {
 }
 
 // Raw digits / signed % look like Unix file sizes; no "원"/"억" suffixes.
-// BTC/BCH use 억 units to 4 decimals (e.g. 1.3342) so small moves stay visible.
-// Upbit 24h % lives on its own `chg` row under `upbit` (not glued to price).
-const LS_SIZE_WIDTH = 12;
+// BTC/BCH use 억 units to 5 decimals (e.g. 1.33421) so small moves stay visible.
+// Upbit 24h % is glued onto the price size: 21850(+0.1%) — not a separate `chg` row.
+// Volumes (억, integer) live on `upbit.vol` + `<cmp>.vol`.
+const LS_SIZE_WIDTH = 16;
 
 function formatLsPriceSize(value, symbol) {
   if (value == null || !Number.isFinite(Number(value))) return '-';
   const n = Number(value);
-  if (symbol === 'BTC' || symbol === 'BCH') return (n / 1e8).toFixed(4);
+  if (symbol === 'BTC' || symbol === 'BCH') return (n / 1e8).toFixed(5);
   return String(Math.round(n));
+}
+
+function formatLsChangeParen(changeRate) {
+  if (changeRate == null || !Number.isFinite(Number(changeRate))) return null;
+  const n = Number(changeRate) * 100;
+  return `(${n >= 0 ? '+' : ''}${n.toFixed(1)}%)`;
+}
+
+function formatLsPriceWithChange(value, changeRate, symbol) {
+  const price = formatLsPriceSize(value, symbol);
+  if (price === '-') return '-';
+  const paren = formatLsChangeParen(changeRate);
+  return paren ? `${price}${paren}` : price;
+}
+
+function formatLsVolumeSize(value) {
+  if (value == null || !Number.isFinite(Number(value))) return '-';
+  return String(Math.round(Number(value) / 1e8));
 }
 
 function formatLsPremiumSize(premium) {
   if (premium == null || !Number.isFinite(Number(premium))) return '-';
   const n = Number(premium);
   return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
-}
-
-function formatLsChangeSize(changeRate) {
-  if (changeRate == null || !Number.isFinite(Number(changeRate))) return '-';
-  const n = Number(changeRate) * 100;
-  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
 }
 
 function lsOwnerHTML(group) {
@@ -488,11 +501,11 @@ const TERM_CMD_LINE =
 
 function ensureTerminalLsShell(el, coins) {
   const cmp = state.comparison;
-  const shellKey = `v8|${cmp}|${(coins || []).map(c => c.symbol).join(',')}`;
+  const shellKey = `v9|${cmp}|${(coins || []).map(c => c.symbol).join(',')}`;
   if (el.dataset.shell === shellKey) return;
 
   const dirCount = (coins && coins.length) || 0;
-  const fileRowsPerCoin = 6;
+  const fileRowsPerCoin = 7;
   const totalBlocks = 2 + dirCount * (1 + fileRowsPerCoin);
 
   const parts = [
@@ -505,15 +518,16 @@ function ensureTerminalLsShell(el, coins) {
   (coins || []).forEach(coin => {
     const dir = coin.symbol.toLowerCase();
     // Group column = coin id; filenames drop the coin prefix (kimp not bsv/kimp).
-    // upbit = price only; chg = 24h % on the next row.
+    // upbit = price(+24h%); upbit.vol / <cmp>.vol = 24h trade amount (억).
     parts.push(
       `<span class="ls-coin" data-symbol="${coin.symbol}">` +
       [
         lsRowHTML({ mode: 'drwxr-xr-x', nlink: 2 + fileRowsPerCoin, name: dir, sizeKey: 'dir', group: dir }),
         lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'kimp', sizeKey: 'kimp', tone: 'kimp', group: dir }),
-        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'upbit', sizeKey: 'upbit', group: dir }),
-        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'chg', sizeKey: 'chg', tone: 'chg', group: dir }),
+        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'upbit', sizeKey: 'upbit', tone: 'chg', group: dir }),
         lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: cmp, sizeKey: 'cmp', group: dir }),
+        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'upbit.vol', sizeKey: 'volBase', group: dir }),
+        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: `${cmp}.vol`, sizeKey: 'volCmp', group: dir }),
         lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'low', sizeKey: 'low', group: dir }),
         lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'high', sizeKey: 'high', group: dir })
       ].join('\n') +
@@ -563,22 +577,28 @@ function patchLsCoinBlock(block, coin, d, stamp) {
   patchLsRow(kimpRow, kimpSize, stamp, true);
 
   const sym = coin.symbol;
-  patchLsRow(q('upbit'), formatLsPriceSize(coin.basePrice, sym), stamp, true);
-
-  const chgRow = q('chg');
+  const upbitRow = q('upbit');
   const chgTone =
     coin.baseChangeRate == null ? ''
       : coin.baseChangeRate >= 0 ? 'positive'
         : 'negative';
-  if (chgRow) {
-    setClass(chgRow, `ls-row ls-tone-chg${chgTone ? ` ls-${chgTone}` : ''}`);
+  if (upbitRow) {
+    setClass(upbitRow, `ls-row ls-tone-chg${chgTone ? ` ls-${chgTone}` : ''}`);
   }
-  patchLsRow(chgRow, formatLsChangeSize(coin.baseChangeRate), stamp, true);
+  patchLsRow(
+    upbitRow,
+    formatLsPriceWithChange(coin.basePrice, coin.baseChangeRate, sym),
+    stamp,
+    true
+  );
 
   const cmpSize = coin.comparisonPriceKRW != null
     ? formatLsPriceSize(coin.comparisonPriceKRW, sym)
     : (coin.comparisonPrice != null ? formatLsPriceSize(coin.comparisonPrice, sym) : '-');
   patchLsRow(q('cmp'), cmpSize, stamp, true);
+
+  patchLsRow(q('volBase'), formatLsVolumeSize(coin.baseVolume24h), stamp, true);
+  patchLsRow(q('volCmp'), formatLsVolumeSize(coin.comparisonVolume24h), stamp, true);
 
   patchLsRow(q('low'), formatLsPriceSize(coin.low24h, sym), stamp, true);
   patchLsRow(q('high'), formatLsPriceSize(coin.high24h, sym), stamp, true);
