@@ -797,10 +797,10 @@ body {
   --term-fs: 0.56rem;
 }
 
-/* Terminal rem base — one step down from 21px (fit phone viewport). */
+/* Terminal rem base — one step down from 20px (fit phone viewport). */
 html[data-theme="terminal"],
 html[data-theme="terminal-color"] {
-  font-size: 20px;
+  font-size: 19px;
 }
 
 /* Terminal viewport lock: opaque chrome + no sideways rubber-band.
@@ -1080,7 +1080,7 @@ html[data-theme="terminal-color"] {
 @media (max-width: 560px) {
   html[data-theme="terminal"],
   html[data-theme="terminal-color"] {
-    font-size: 20px;
+    font-size: 19px;
   }
 
   [data-theme="terminal"] .main,

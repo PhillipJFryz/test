@@ -438,8 +438,8 @@ function padLeft(str, width) {
 
 // Raw digits / signed % look like Unix file sizes; no "원"/"억" suffixes.
 // BTC/BCH use 억 units to 5 decimals (e.g. 1.33421) so small moves stay visible.
-// Upbit 24h % is glued onto the price size: 21850(+0.1%) — not a separate `chg` row.
-// Volumes (억, integer) live on `upbit.vol` + `<cmp>.vol`.
+// Upbit / comparison exchange 24h % is glued onto the price size: 21850(+0.1%) — not a separate `chg` row.
+// Volumes (억, integer) live on one `u/<cmpInitial>` row as `base/cmp` (e.g. u/g → 5/6).
 const LS_SIZE_WIDTH = 16;
 
 function formatLsPriceSize(value, symbol) {
@@ -465,6 +465,18 @@ function formatLsPriceWithChange(value, changeRate, symbol) {
 function formatLsVolumeSize(value) {
   if (value == null || !Number.isFinite(Number(value))) return '-';
   return String(Math.round(Number(value) / 1e8));
+}
+
+function formatLsVolumePair(baseVol, cmpVol) {
+  const a = formatLsVolumeSize(baseVol);
+  const b = formatLsVolumeSize(cmpVol);
+  if (a === '-' && b === '-') return '-';
+  return `${a}/${b}`;
+}
+
+function lsVolumeFileName(cmp) {
+  const initial = String(cmp || 'g').charAt(0).toLowerCase() || 'g';
+  return `u/${initial}`;
 }
 
 function formatLsPremiumSize(premium) {
@@ -501,12 +513,13 @@ const TERM_CMD_LINE =
 
 function ensureTerminalLsShell(el, coins) {
   const cmp = state.comparison;
-  const shellKey = `v9|${cmp}|${(coins || []).map(c => c.symbol).join(',')}`;
+  const shellKey = `v11|${cmp}|${(coins || []).map(c => c.symbol).join(',')}`;
   if (el.dataset.shell === shellKey) return;
 
   const dirCount = (coins && coins.length) || 0;
-  const fileRowsPerCoin = 7;
+  const fileRowsPerCoin = 6;
   const totalBlocks = 2 + dirCount * (1 + fileRowsPerCoin);
+  const volName = lsVolumeFileName(cmp);
 
   const parts = [
     `<span class="ls-cmd" role="button" tabindex="0" title="비교 거래소 전환" aria-label="비교 거래소 전환">$ ls -al</span>`,
@@ -518,16 +531,15 @@ function ensureTerminalLsShell(el, coins) {
   (coins || []).forEach(coin => {
     const dir = coin.symbol.toLowerCase();
     // Group column = coin id; filenames drop the coin prefix (kimp not bsv/kimp).
-    // upbit = price(+24h%); upbit.vol / <cmp>.vol = 24h trade amount (억).
+    // upbit/cmp = price(+24h%); u/<cmpInitial> = 24h trade amounts as base/cmp 억 (e.g. u/g → 5/6).
     parts.push(
       `<span class="ls-coin" data-symbol="${coin.symbol}">` +
       [
         lsRowHTML({ mode: 'drwxr-xr-x', nlink: 2 + fileRowsPerCoin, name: dir, sizeKey: 'dir', group: dir }),
         lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'kimp', sizeKey: 'kimp', tone: 'kimp', group: dir }),
         lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'upbit', sizeKey: 'upbit', tone: 'chg', group: dir }),
-        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: cmp, sizeKey: 'cmp', group: dir }),
-        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'upbit.vol', sizeKey: 'volBase', group: dir }),
-        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: `${cmp}.vol`, sizeKey: 'volCmp', group: dir }),
+        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: cmp, sizeKey: 'cmp', tone: 'chg', group: dir }),
+        lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: volName, sizeKey: 'vol', group: dir }),
         lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'low', sizeKey: 'low', group: dir }),
         lsRowHTML({ mode: '-rw-r--r--', nlink: 1, name: 'high', sizeKey: 'high', group: dir })
       ].join('\n') +
@@ -592,13 +604,30 @@ function patchLsCoinBlock(block, coin, d, stamp) {
     true
   );
 
-  const cmpSize = coin.comparisonPriceKRW != null
-    ? formatLsPriceSize(coin.comparisonPriceKRW, sym)
-    : (coin.comparisonPrice != null ? formatLsPriceSize(coin.comparisonPrice, sym) : '-');
-  patchLsRow(q('cmp'), cmpSize, stamp, true);
+  const cmpPrice = coin.comparisonPriceKRW != null
+    ? coin.comparisonPriceKRW
+    : coin.comparisonPrice;
+  const cmpChgTone =
+    coin.comparisonChangeRate == null ? ''
+      : coin.comparisonChangeRate >= 0 ? 'positive'
+        : 'negative';
+  const cmpRow = q('cmp');
+  if (cmpRow) {
+    setClass(cmpRow, `ls-row ls-tone-chg${cmpChgTone ? ` ls-${cmpChgTone}` : ''}`);
+  }
+  patchLsRow(
+    cmpRow,
+    formatLsPriceWithChange(cmpPrice, coin.comparisonChangeRate, sym),
+    stamp,
+    true
+  );
 
-  patchLsRow(q('volBase'), formatLsVolumeSize(coin.baseVolume24h), stamp, true);
-  patchLsRow(q('volCmp'), formatLsVolumeSize(coin.comparisonVolume24h), stamp, true);
+  patchLsRow(
+    q('vol'),
+    formatLsVolumePair(coin.baseVolume24h, coin.comparisonVolume24h),
+    stamp,
+    true
+  );
 
   patchLsRow(q('low'), formatLsPriceSize(coin.low24h, sym), stamp, true);
   patchLsRow(q('high'), formatLsPriceSize(coin.high24h, sym), stamp, true);
