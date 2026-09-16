@@ -172,12 +172,9 @@ function buildCardData(coin) {
   let comparisonSubClass = '';
   if (hasData) {
     // Gate/Binance quote in USDT: show the KRW-converted price plus the raw
-    // USDT price underneath - USDT itself is no exception here anymore. It
-    // used to hardcode "$1.00" with no sub-line, which left that one row a
-    // line shorter than every other coin's and threw off row alignment
-    // across the whole card row. Showing Gate's real ~$0.999-1.001 print (or
-    // Binance's fixed $1.00 - see fetchBinancePrices) keeps every card the
-    // same shape and is more honest about the USDT/USD peg besides.
+    // USDT price underneath. For the USDT row itself both venues peg at $1
+    // (Gate's USDT_USD ticker is illiquid/broken — see fetchGatePrices);
+    // overseas KRW is then just the live USD/KRW FX rate.
     // Bithumb quotes directly in KRW, so there is no USD line; its own 24h
     // change rate is shown instead, same as the base row.
     if (isUsdtQuote) {

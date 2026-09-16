@@ -82,11 +82,13 @@ async function fetchBithumbPrices() {
 }
 
 async function fetchGatePrices() {
+  // Do NOT use Gate's USDT_USD pair — it is illiquid/broken (prints like
+  // ~1.39 with +39% change) and would inflate the KRW conversion to ~1900원.
+  // Treat the peg as $1, same as Binance; overseas KRW ≈ live USD/KRW FX.
   const pairs = [
     { pair: 'BTC_USDT', symbol: 'BTC' },
     { pair: 'BSV_USDT', symbol: 'BSV' },
-    { pair: 'BCH_USDT', symbol: 'BCH' },
-    { pair: 'USDT_USD', symbol: 'USDT' }
+    { pair: 'BCH_USDT', symbol: 'BCH' }
   ];
   const results = await Promise.all(
     pairs.map(p => fetchJSON(`${GATE_TICKER_BASE}?currency_pair=${p.pair}`).catch(() => null))
@@ -101,6 +103,9 @@ async function fetchGatePrices() {
       volumes[pairs[i].symbol] = parseFloat(data[0].quote_volume) || 0;
     }
   });
+  prices.USDT = 1;
+  changeRates.USDT = 0;
+  volumes.USDT = 0;
   return { prices, changeRates, volumes };
 }
 
