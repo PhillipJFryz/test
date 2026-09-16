@@ -93,16 +93,6 @@ function formatSignedPercent(value, digits) {
   return `${value >= 0 ? '+' : ''}${value.toFixed(digits)}%`;
 }
 
-// CoinGecko markets `sparkline_in_7d` is ~hourly over 7d (~168 pts).
-// Take the last seventh of the series as an approximate 1-day window —
-// no extra API call, same cache as supply/ATH.
-function sliceSparkline1d(prices) {
-  const clean = (prices || []).filter(v => typeof v === 'number' && Number.isFinite(v));
-  if (clean.length < 2) return clean;
-  const oneDayCount = Math.max(2, Math.round(clean.length / 7));
-  return clean.slice(-oneDayCount);
-}
-
 // Builds an SVG polyline `points` attribute from a raw price series,
 // normalized into a 0-100 x / 0-28 y box so the shape reads regardless of
 // the coin's absolute price. Gaps CoinGecko sometimes leaves as null are
@@ -256,14 +246,14 @@ function buildCardData(coin) {
   // direction - a full-saturation red/green squiggle next to the premium
   // badge competed with it for attention. Only the small percentage label
   // keeps the positive/negative color, same as everywhere else on the card.
-  // API still ships sparkline7d; UI shows the last ~24h slice as "1일 추이".
-  const sparkline = sliceSparkline1d(coin.sparkline7d);
+  // CoinGecko markets sparkline_in_7d (~hourly, ~168 pts) — full series as "7일 추이".
+  const sparkline = coin.sparkline7d || [];
   const sparklinePoints = buildSparklinePoints(sparkline);
-  const sparkline1dChangeValue = sparkline.length >= 2
+  const sparkline7dChangeValue = sparkline.length >= 2
     ? ((sparkline[sparkline.length - 1] - sparkline[0]) / sparkline[0]) * 100
     : null;
-  const sparkline1dChange = sparkline1dChangeValue != null ? formatSignedPercent(sparkline1dChangeValue, 1) : null;
-  const sparklineChangeClass = sparkline1dChangeValue == null ? '' : (sparkline1dChangeValue >= 0 ? 'positive' : 'negative');
+  const sparkline7dChange = sparkline7dChangeValue != null ? formatSignedPercent(sparkline7dChangeValue, 1) : null;
+  const sparklineChangeClass = sparkline7dChangeValue == null ? '' : (sparkline7dChangeValue >= 0 ? 'positive' : 'negative');
 
   return {
     premiumClass, premiumStr,
@@ -277,7 +267,7 @@ function buildCardData(coin) {
     athChangeStr, athDateStr,
     hasRange, rangePct, low24hStr, high24hStr,
     premiumTrendStr, premiumTrendClass,
-    sparklinePoints, sparkline1dChange, sparklineChangeClass
+    sparklinePoints, sparkline7dChange, sparklineChangeClass
   };
 }
 
@@ -316,7 +306,7 @@ function cardShellHTML(coin) {
             </div>
           </div>
           <div class="sparkline-row" data-f="sparkRow" hidden>
-            <span class="stat-label">1일 추이</span>
+            <span class="stat-label">7일 추이</span>
             <svg class="sparkline" viewBox="0 0 100 28" preserveAspectRatio="none">
               <polyline data-f="sparkPoly" points="" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
             </svg>
@@ -668,7 +658,7 @@ function patchCard(card, d) {
     }
     const sparkChange = q('sparkChange');
     setClass(sparkChange, `sparkline-change ${d.sparklineChangeClass}`.trim());
-    setText(sparkChange, d.sparkline1dChange);
+    setText(sparkChange, d.sparkline7dChange);
   }
 
   setText(q('mcapRank'), d.marketCapRankStr);
